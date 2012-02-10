@@ -19,13 +19,13 @@
   <modelVersion>4.0.0</modelVersion>
   
   <parent>
-    <groupId>com.cloudera.cdh</groupId>
+    <groupId>com.hanborqs.cdh</groupId>
     <artifactId>cdh-root</artifactId>
     <version>3.0-u2</version>
-    <relativePath>../../../../../pom.xml</relativePath>
+    <relativePath>./parent-pom.xml</relativePath>
   </parent>
   
-  <groupId>com.cloudera.cdh</groupId>
+  <groupId>com.hanborqs.cdh</groupId>
   <artifactId>hadoop-root</artifactId>
   <version>${cdh.parent.version}</version>
   <packaging>pom</packaging>
@@ -33,42 +33,8 @@
   <description>Hadoop root</description>
   <name>CDH Hadoop root</name>
   
-  <licenses>
-    <license>
-      <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-    </license>
-  </licenses>
   
-  <organization>
-    <name>Cloudera</name>
-    <url>http://www.cloudera.com</url>
-  </organization>
-
-  <scm>
-    <connection>scm:git:git://github.sf.cloudera.com/CDH/hadoop.git</connection>
-    <developerConnection>scm:git:ssh://git@github.sf.cloudera.com/CDH/hadoop.git</developerConnection>
-    <url>http://github.sf.cloudera.com/CDH/hadoop</url>
-  </scm>
-
-  <repositories>
-    <repository>
-      <id>cdh.releases.repo</id>
-      <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
-      <name>CDH Releases Repository</name>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>cdh.snapshots.repo</id>
-      <url>https://repository.cloudera.com/content/repositories/snapshots</url>
-      <name>CDH Snapshots Repository</name>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
+  
   
   <profiles>
     <profile>

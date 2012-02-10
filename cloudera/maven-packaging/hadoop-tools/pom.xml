@@ -22,22 +22,22 @@
   <modelVersion>4.0.0</modelVersion>
   
   <parent>
-    <groupId>com.cloudera.cdh</groupId>
+    <groupId>com.hanborqs.cdh</groupId>
     <artifactId>hadoop-root</artifactId>
-    <version>3.0-u2</version>
+    <version>${cdh.parent.version}</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   
   <groupId>org.apache.hadoop</groupId>
   <artifactId>hadoop-tools</artifactId>
   <packaging>pom</packaging>
-  <version>0.20.2-cdh3u2</version>
+  <version>${cdh.hadoop.version}</version>
   
   <name>hadoop-tools</name>
   
   <dependencies>
     <dependency>
-      <groupId>com.cloudera.cdh</groupId>
+      <groupId>com.hanborqs.cdh</groupId>
       <artifactId>hadoop-ant</artifactId>
       <type>pom</type>
     </dependency>

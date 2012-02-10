@@ -23,14 +23,14 @@ NOTE - This POM is used for Cloudera's build and packaging process.
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   
-  <parent>
-    <groupId>com.cloudera.cdh</groupId>
-    <artifactId>hadoop-root</artifactId>
-    <version>3.0-u2</version>
-    <relativePath>cloudera/maven-packaging/pom.xml</relativePath>
-  </parent>
-  
-  <groupId>com.cloudera.cdh</groupId>
+	<parent>
+		<groupId>com.hanborqs.cdh</groupId>
+		<artifactId>hadoop-root</artifactId>
+		<version>${cdh.parent.version}</version>
+		<relativePath>cloudera/maven-packaging/pom.xml</relativePath>
+	</parent>
+
+	<groupId>com.hanborqs.cdh</groupId>
   <artifactId>hadoop-ant</artifactId>
   <version>${cdh.parent.version}</version>
   <packaging>pom</packaging>
@@ -39,37 +39,7 @@ NOTE - This POM is used for Cloudera's build and packaging process.
   <name>CDH Hadoop Maven Wrapper</name>
 
   <profiles>
-    <!--To allow standalone project to fetch CDH artifacts -->
-    <!--Activate by default doing a negation of negation   -->
-    <!-- this trick allows CDH root to switch it off       -->
-    <profile>
-      <id>cdh.repos</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-        <property>
-          <name>use.cdh.repos</name>
-          <value>!false</value>
-        </property>
-      </activation>
-      <repositories>
-        <repository>
-          <id>cdh.releases.repo</id>
-          <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
-          <name>CDH Releases Repository</name>
-          <snapshots>
-            <enabled>false</enabled>
-          </snapshots>
-        </repository>
-        <repository>
-          <id>cdh.snapshots.repo</id>
-          <url>https://repository.cloudera.com/content/repositories/snapshots</url>
-          <name>CDH Snapshots Repository</name>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-        </repository>
-      </repositories>
-    </profile>
+ 
     <!-- Similar logic to allow us to skip compilation/tests when run -->
     <!-- via do-release-build or packaging scripts, since we're already -->
     <!-- compiling via direct ant calls. -->
