@@ -1,0 +1,6 @@
+hadoop-streaming/target
+hadoop-test/target
+hadoop-core/target
+hadoop-mrunit/target
+hadoop-tools/target
+hadoop-examples/target
