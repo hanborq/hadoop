@@ -92,6 +92,7 @@ public class MergeManager<K, V>
 
     private final long memoryLimit;
     private long usedMemory;
+    private long commitMemory;
     private final long maxSingleShuffleLimit;
 
     private final int memToMemMergeOutputsThreshold;
@@ -250,8 +251,8 @@ public class MergeManager<K, V>
         if (usedMemory > memoryLimit)
         {
             LOG.debug(mapId + ": Stalling shuffle since usedMemory (" + usedMemory
-                    + ") is greater than memoryLimit (" + memoryLimit + ")");
-
+                    + ") is greater than memoryLimit (" + memoryLimit + ")." + 
+                    " CommitMemory is (" + commitMemory + ")"); 
             return stallShuffle;
         }
 
@@ -275,24 +276,29 @@ public class MergeManager<K, V>
 
     synchronized void unreserve(long size)
     {
+        commitMemory -= size;
         usedMemory -= size;
     }
 
   public synchronized void closeInMemoryFile(MapOutput<K, V> mapOutput) {
     inMemoryMapOutputs.add(mapOutput);
     LOG.info("closeInMemoryFile -> map-output of size: " + mapOutput.getSize()
-        + ", inMemoryMapOutputs.size() -> " + inMemoryMapOutputs.size());
+            + ", inMemoryMapOutputs.size() -> " + inMemoryMapOutputs.size()
+            + ", commitMemory -> " + commitMemory + ", usedMemory ->" + usedMemory);
+    commitMemory+= mapOutput.getSize();
     if (avoidsort) {
       notify();
     }
     synchronized (inMemoryMerger) {
-      if (!inMemoryMerger.isInProgress() && usedMemory >= mergeThreshold) {
-        LOG.info("Starting inMemoryMerger's merge since usedMemory="
-            + usedMemory + " > mergeThreshold=" + mergeThreshold);
-        inMemoryMapOutputs.addAll(inMemoryMergedMapOutputs);
-        inMemoryMergedMapOutputs.clear();
-        inMemoryMerger.startMerge(inMemoryMapOutputs);
-      }
+     // Can hang if mergeThreshold is really low.
+        if (!inMemoryMerger.isInProgress() && commitMemory >= mergeThreshold) {
+          LOG.info("Starting inMemoryMerger's merge since commitMemory=" +
+              commitMemory + " > mergeThreshold=" + mergeThreshold + 
+              ". Current usedMemory=" + usedMemory);
+          inMemoryMapOutputs.addAll(inMemoryMergedMapOutputs);
+          inMemoryMergedMapOutputs.clear();
+          inMemoryMerger.startMerge(inMemoryMapOutputs);
+        } 
     }
 
     if (memToMemMerger != null) {

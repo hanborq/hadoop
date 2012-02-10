@@ -51,6 +51,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.StringUtils;
 
 /** A Reduce task. */
 class ReduceTask extends Task {
@@ -377,10 +378,7 @@ class ReduceTask extends Task {
             try {
               shuffle.run();
             } catch (Exception e) {
-              LOG.warn(e);
-              ByteArrayOutputStream baos = new ByteArrayOutputStream();
-              e.printStackTrace(new PrintStream(baos));
-              LOG.warn(baos.toString());
+              LOG.warn(" Shuffle error "+ StringUtils.stringifyException(e));
             }
           }
         });
