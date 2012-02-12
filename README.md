@@ -25,7 +25,7 @@ The API, configuration, scripts are all back-compatible with [Apache Hadoop](htt
 
 # Innovations and Inspirations   
 The open source community and our real enterprise businesses are the strong source of our continuous innovations. 
-Google, the great father of MapReduce, GFS, etc., always output papers and experiences that bring us inspirations, such as:   
+Google, the great father of MapReduce, GFS, etc., always outputs papers and experiences that bring us inspirations, such as:   
 [MapReduce: Simplified Data Processing on Large Clusters](http://research.google.com/archive/mapreduce.html)   
 [MapReduce: A Flexible Data Processing Tool](http://cacm.acm.org/magazines/2010/1/55744-mapreduce-a-flexible-data-processing-tool)   
 [Tenzing: A SQL Implementation On The MapReduce Framework](http://research.google.com/pubs/pub37200.html)   
