@@ -371,11 +371,14 @@ public class MergeManager<K, V>
     }
   }
    
-    public synchronized RawKeyValueIterator close() throws Throwable
+    public  RawKeyValueIterator close() throws Throwable
     {
         this.close  = true;
         if (avoidsort) {
-   		  notify();
+        	synchronized(this)
+        	{
+        		  notify();
+        	}
   		}
         // Wait for on-going merges to complete
         if (memToMemMerger != null)
