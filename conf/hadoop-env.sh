@@ -5,6 +5,12 @@
 # set JAVA_HOME in this file, so that it is correctly defined on
 # remote nodes.
 
+##########################################################################
+# This flag HADOOP_ENV_SET to avoid duplicated setting of these variables.
+if [ "$HADOOP_ENV_SET" == "" ]; then
+export HADOOP_ENV_SET=true
+##########################################################################
+
 # The java implementation to use.  Required.
 # export JAVA_HOME=/usr/lib/j2sdk1.6-sun
 
@@ -52,3 +58,8 @@ export HADOOP_JOBTRACKER_OPTS="-Dcom.sun.management.jmxremote $HADOOP_JOBTRACKER
 
 # The scheduling priority for daemon processes.  See 'man nice'.
 # export HADOOP_NICENESS=10
+
+##########################################################################
+# The end of if "HADOOP_ENV_SET"
+if
+##########################################################################
