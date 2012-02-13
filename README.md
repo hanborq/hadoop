@@ -11,6 +11,17 @@ It is a open source distribution, to make Hadoop **Fast**, **Simple** and **Robu
 **- Simple:** Easy to use and develop BigData applications on Hadoop.   
 **- Robust:** Make hadoop more stable.   
 
+**1. MapReduce Framework Job Latency**  
+bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 32 -r 4 -mt 1 -rt 1   
+bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 96 -r 4 -mt 1 -rt 1   
+![HDH MapReduce Framework Job Latency](https://github.com/hanborq/hadoop/wiki/images/hdh-mapreduce-framework-job-latency.jpg)  
+In order to reduce job latency, HDH implements **Distributed Worker Pool** like Google Tenzing. HDH MapReduce framework does not spawn new JVM processes for each job/task, but instead keep the slot processes running constantly. 
+Additionally, there are many other improvements at this aspect.  
+
+**2. MapReduce Processing Model Performance**    
+**3. Terasort**  
+Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoop/wiki/MapReduce-Benchmarks) for detail.  
+
 ## Features   
 ### MapReduce   
 **- Fast job launching:** such as the time of job lunching drop from 15 seconds to 1 second.   
