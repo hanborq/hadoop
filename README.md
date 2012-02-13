@@ -11,6 +11,9 @@ It is a open source distribution, to make Hadoop **Fast**, **Simple** and **Robu
 **- Simple:** Easy to use and develop BigData applications on Hadoop.   
 **- Robust:** Make hadoop more stable.   
 
+## MapReduce Benchmarks  
+The Testbed: 5 node cluster (4 slaves), 8 map slots and 1 reduce slots per node.  
+
 **1. MapReduce Framework Job Latency**  
 bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 32 -r 4 -mt 1 -rt 1   
 bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 96 -r 4 -mt 1 -rt 1   
