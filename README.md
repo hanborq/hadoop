@@ -12,7 +12,6 @@ It is a open source distribution, to make Hadoop **Fast**, **Simple** and **Robu
 **- Robust:** Make hadoop more stable.   
 
 ## MapReduce Benchmarks  
-<<<<<<< HEAD
 The Testbed: 5 node cluster (4 slaves), 8 map slots and 2 reduce slots per node.  
 
 **1. MapReduce Runtime Environment Improvement**  
@@ -27,22 +26,6 @@ Many improvements are applied on Hadoop MapReduce Processing engine, such as shu
 ![HDH MapReduce Processing Engine Benchmark](https://github.com/hanborq/hadoop/wiki/images/hdh-mapreduce-engine-benchmark-1.jpg)  
   
 Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoop/wiki/MapReduce-Benchmarks) for detail.      
- 
-=======
-The Testbed: 5 node cluster (4 slaves), 8 map slots and 1 reduce slots per node.  
-
-**1. MapReduce Framework Job Latency**  
-bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 32 -r 4 -mt 1 -rt 1   
-bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 96 -r 4 -mt 1 -rt 1   
-![HDH MapReduce Framework Job Latency](https://github.com/hanborq/hadoop/wiki/images/hdh-mapreduce-framework-job-latency.jpg)  
-In order to reduce job latency, HDH implements **Distributed Worker Pool** like Google Tenzing. HDH MapReduce framework does not spawn new JVM processes for each job/task, but instead keep the slot processes running constantly. 
-Additionally, there are many other improvements at this aspect.  
-
-**2. MapReduce Processing Model Performance**    
-**3. Terasort**  
-Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoop/wiki/MapReduce-Benchmarks) for detail.  
-
->>>>>>> 5f81167f4e991fe8c811909b39ba7d8e5082a56d
 ## Features   
 ### MapReduce   
 **- Fast job launching:** such as the time of job lunching drop from 20 seconds to 1 second.   
@@ -58,11 +41,6 @@ Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoo
   
 ## Compatibility   
 The API, configuration, scripts are all back-compatible with [Apache Hadoop](http://hadoop.apache.org/) and [Cloudera Hadoop(CDH)](http://www.cloudera.com/hadoop/). The user and developer need not to study new, except new features.
-
-
-## How to build?
-    cd hadoop  
-    mvn -Dnot.cdh.release.build=true -Dmaven.test.skip=true -DskipTests=true clean package  
 
 ## Innovations and Inspirations   
 The open source community and our real enterprise businesses are the strong source of our continuous innovations. 
