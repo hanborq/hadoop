@@ -457,6 +457,7 @@ class JvmManager {
 				jvmRunner = jvmIdToRunner.get(jvmId);
 	
 				if (jvmRunner == null) {
+					LOG.error("Cannot find jvm runner with jvmid " + jvmId);
 					return null;
 				}
 				

@@ -1555,7 +1555,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   }
         
   /** Return the port at which the tasktracker bound to */
-  public synchronized InetSocketAddress getTaskTrackerReportAddress() {
+  public InetSocketAddress getTaskTrackerReportAddress() {
     return taskReportAddress;
   }
     
@@ -3220,12 +3220,11 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
 	    LOG.debug("JVM with ID : " + jvmId + " asked for a task");
 	    // save pid of task JVM sent by child
 	    jvmManager.setPidToJvm(jvmId, context.pid);
-	    /*
+	    
 	    if (!jvmManager.isJvmKnown(jvmId)) {
 	      LOG.info("Killing unknown JVM " + jvmId);
 	      return new JvmTask(null, true);
 	    }
-	    */
   	}
     
     /*
