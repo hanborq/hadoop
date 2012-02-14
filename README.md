@@ -37,6 +37,11 @@ Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoo
 ## Compatibility   
 The API, configuration, scripts are all back-compatible with [Apache Hadoop](http://hadoop.apache.org/) and [Cloudera Hadoop(CDH)](http://www.cloudera.com/hadoop/). The user and developer need not to study new, except new features.
 
+
+## How to build?
+    cd hadoop  
+    mvn -Dnot.cdh.release.build=true -Dmaven.test.skip=true -DskipTests=true clean package  
+
 ## Innovations and Inspirations   
 The open source community and our real enterprise businesses are the strong source of our continuous innovations. 
 Google, the great father of MapReduce, GFS, etc., always outputs papers and experiences that bring us inspirations, such as:   
