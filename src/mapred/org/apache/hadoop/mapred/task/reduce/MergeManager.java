@@ -282,10 +282,10 @@ public class MergeManager<K, V>
 
   public synchronized void closeInMemoryFile(MapOutput<K, V> mapOutput) {
     inMemoryMapOutputs.add(mapOutput);
+    commitMemory+= mapOutput.getSize();
     LOG.info("closeInMemoryFile -> map-output of size: " + mapOutput.getSize()
             + ", inMemoryMapOutputs.size() -> " + inMemoryMapOutputs.size()
             + ", commitMemory -> " + commitMemory + ", usedMemory ->" + usedMemory);
-    commitMemory+= mapOutput.getSize();
     if (avoidsort) {
       notify();
     }
