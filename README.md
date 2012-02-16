@@ -38,7 +38,8 @@ Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoo
 ## How to build?  
     $ cd cloudera/maven-packaging  
     $ mvn -Dnot.cdh.release.build=true -Dmaven.test.skip=true -DskipTests=true clean package  
-  
+Then use this package: build/hadoop-{main-version}-hdh{hdh-version}, for example: build/hadoop-0.20.2-hdh3u2  
+
 ## Compatibility   
 The API, configuration, scripts are all back-compatible with [Apache Hadoop](http://hadoop.apache.org/) and [Cloudera Hadoop(CDH)](http://www.cloudera.com/hadoop/). The user and developer need not to study new, except new features.
 
