@@ -1,5 +1,7 @@
 A Hanborq optimized Hadoop Distribution, especially with high performance of MapReduce. It's the core part of HDH (Hanborq Distribution with Hadoop for Big Data Engineering).   
 
+Here is our presentation: [Hanborq Optimizations on Hadoop MapReduce](http://www.slideshare.net/hanborq/hanborq-optimizations-on-hadoop-mapreduce-20120216a)  
+
 # HDH (Hanborq Distribution with Hadoop)   
 Hanborq, a start-up team focuses on Cloud & BigData products and businesses, delivers a series of software products for Big Data Engineering, including a optimized Hadoop Distribution.   
 
