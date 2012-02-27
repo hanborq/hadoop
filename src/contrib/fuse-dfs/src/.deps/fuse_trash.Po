@@ -1,5 +1,5 @@
 fuse_trash.o fuse_trash.o: fuse_trash.c \
-  /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h \
+  /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h \
   /usr/include/sys/types.h /usr/include/features.h \
   /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
   /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
@@ -34,7 +34,7 @@ fuse_trash.o fuse_trash.o: fuse_trash.c \
   /usr/include/sys/statvfs.h /usr/include/bits/statvfs.h \
   /usr/include/fuse/fuse_opt.h fuse_trash.h fuse_context_handle.h
 
-/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h:
+/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h:
 
 /usr/include/sys/types.h:
 

@@ -27,7 +27,7 @@ fuse_impls_mknod.o fuse_impls_mknod.o: fuse_impls_mknod.c fuse_dfs.h \
   /usr/include/bits/stat.h /usr/include/utime.h \
   /usr/include/sys/statvfs.h /usr/include/bits/statvfs.h \
   /usr/include/fuse/fuse_opt.h fuse_impls.h fuse_context_handle.h \
-  /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h \
+  /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h \
   /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
   /usr/include/alloca.h \
   /opt/cloudera/toolchain/JDK6u20-64bit/include/jni.h \
@@ -157,7 +157,7 @@ fuse_impls.h:
 
 fuse_context_handle.h:
 
-/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h:
+/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h:
 
 /usr/include/bits/waitflags.h:
 

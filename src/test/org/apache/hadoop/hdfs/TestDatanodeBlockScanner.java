@@ -99,10 +99,16 @@ public class TestDatanodeBlockScanner extends TestCase {
   }
 
   public void testDatanodeBlockScanner() throws IOException {
-    
+    for (int threads = 1; threads < 4; threads++) {
+      runTestDatanodeBlockScanner(threads);
+    }
+  }
+
+  public void runTestDatanodeBlockScanner(int numThreads) throws IOException {
     long startTime = System.currentTimeMillis();
     
     Configuration conf = new Configuration();
+    conf.setInt("dfs.datanode.directoryscan.threads", numThreads);
     MiniDFSCluster cluster = new MiniDFSCluster(conf, 1, true, null);
     cluster.waitActive();
     

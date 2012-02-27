@@ -42,7 +42,10 @@
   <property name="cdh.releases"
             value="https://repository.cloudera.com/artifactory/cdh-releases-rcs/"
             override="false" />
-  
+  <property name="ext.releases"
+            value="http://repository.cloudera.com/artifactory/ext-release-local/"
+            override="false" />
+
   <!-- pull in the local repository -->
   <include url="${ivy.default.conf.dir}/ivyconf-local.xml"/>
   <settings defaultResolver="default"/>
@@ -63,6 +66,11 @@
       />
     <ibiblio name="cdh-releases"
       root="${cdh.releases}"
+      pattern="${maven2.pattern.ext}"
+      m2compatible="true"
+      />
+    <ibiblio name="ext-releases"
+      root="${ext.releases}"
       pattern="${maven2.pattern.ext}"
       m2compatible="true"
       />

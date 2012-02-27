@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.LocalDirAllocator;
+import org.apache.hadoop.mapred.TaskTracker.LocalStorage;
 import org.apache.hadoop.util.Shell;
 
 import junit.framework.TestCase;
@@ -64,7 +65,10 @@ public class TestLinuxTaskController extends TestCase {
       // task controller setup should fail validating permissions.
       Throwable th = null;
       try {
-        controller.setup(new LocalDirAllocator("mapred.local.dir"));
+        controller.setup(
+            new LocalDirAllocator(JobConf.MAPRED_LOCAL_DIR_PROPERTY),
+            new LocalStorage(controller.getConf().getStrings(
+                JobConf.MAPRED_LOCAL_DIR_PROPERTY)));
       } catch (IOException ie) {
         th = ie;
       }
@@ -73,7 +77,9 @@ public class TestLinuxTaskController extends TestCase {
           + exitCode, th.getMessage().contains(
           "with exit code " + exitCode));
     } else {
-      controller.setup(new LocalDirAllocator("mapred.local.dir"));
+      controller.setup(new LocalDirAllocator(JobConf.MAPRED_LOCAL_DIR_PROPERTY),
+          new LocalStorage(controller.getConf().getStrings(
+              JobConf.MAPRED_LOCAL_DIR_PROPERTY)));
     }
 
     execCommand(confFile, "sudo", "rm");

@@ -1148,7 +1148,8 @@ public class TestDFSShell extends TestCase {
     }
   }
 
-  static List<File> getBlockFiles(MiniDFSCluster cluster) throws IOException {
+  static List<File> getBlockFiles(MiniDFSCluster cluster) 
+      throws IOException, InterruptedException {
     List<File> files = new ArrayList<File>();
     List<DataNode> datanodes = cluster.getDataNodes();
     Block[][] blocks = cluster.getAllBlockReports();
@@ -1219,7 +1220,7 @@ public class TestDFSShell extends TestCase {
     }
   }
   
-  public void testGet() throws IOException {
+  public void testGet() throws IOException, InterruptedException {
     DFSTestUtil.setLogLevel2All(FSInputChecker.LOG);
     final Configuration conf = new Configuration();
     MiniDFSCluster cluster = new MiniDFSCluster(conf, 2, true, null);

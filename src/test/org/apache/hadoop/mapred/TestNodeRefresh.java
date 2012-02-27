@@ -108,7 +108,6 @@ public class TestNodeRefresh extends TestCase {
       mr = new MiniMRCluster(0, 0, numHosts * numTrackerPerHost, namenode, 1, 
                              null, trackerHosts, clusterUgi, jtConf, 
                              numExcluded * numTrackerPerHost);
-      
       jt = mr.getJobTrackerRunner().getJobTracker();
       
       // check if trackers from all the desired hosts have connected

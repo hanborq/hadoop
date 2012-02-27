@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -103,6 +104,7 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 import org.apache.hadoop.util.DiskChecker;
 import org.apache.hadoop.util.MemoryCalculatorPlugin;
+import org.apache.hadoop.util.ResourceCalculatorPlugin;
 import org.apache.hadoop.util.ProcfsBasedProcessTree;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
@@ -220,6 +222,98 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
 
   volatile boolean running = true;
 
+  /**
+   * Manages TT local storage directories.
+   */
+  static class LocalStorage {
+    private List<String> localDirs;
+    private int numFailures;
+
+    /**
+     * TaskTracker internal only
+     */
+    public LocalStorage(String[] dirs) {
+      localDirs = new ArrayList<String>();
+      localDirs.addAll(Arrays.asList(dirs));
+    }
+
+    /**
+     * @return the number of valid local directories
+     */
+    synchronized int numDirs() {
+      return localDirs.size();
+    }
+
+    /**
+     * @return the current valid directories 
+     */
+    synchronized String[] getDirs() {
+      return localDirs.toArray(new String[localDirs.size()]);
+    }
+
+    /**
+     * @return the current valid directories
+     */
+    synchronized String getDirsString() {
+      return StringUtils.join(",", localDirs);
+    }
+
+    /**
+     * @return the number of directory failures
+     */
+     synchronized int numFailures() {
+       return numFailures;
+     }
+
+    /**
+     * Check the current set of local directories, updating the list
+     * of valid directories if necessary.
+     * @param checkAndFixPermissions should check the permissions of the
+     *        directory and try to fix them if incorrect. This is
+     *        expensive so should only be done at startup.
+     * @throws DiskErrorException if no directories are writable
+     */
+    synchronized void checkDirs(LocalFileSystem fs,
+                                boolean checkAndFixPermissions)
+        throws DiskErrorException {
+      ListIterator<String> it = localDirs.listIterator();
+      while (it.hasNext()) {
+        final String path = it.next();
+        try {
+          File dir = new File(path);
+          if (checkAndFixPermissions) {
+            DiskChecker.checkDir(fs, new Path(path), LOCAL_DIR_PERMISSION);
+            // This version of DiskChecker#checkDir - unlike the one
+            // below - doesn't use File to check if an actual read or
+            // write will fail (it just checks the permissions value)
+            // so we need to check that here.
+            if (!dir.canRead()) {
+              throw new DiskErrorException("Dir is not readable: " + path);
+            }
+            if (!dir.canWrite()) {
+              throw new DiskErrorException("Dir is not writable: " + path);
+            }
+          } else {
+            DiskChecker.checkDir(dir);
+          }
+        } catch (IOException ioe) {
+          LOG.warn("TaskTracker local dir " + path + " error " + 
+              ioe.getMessage() + ", removing from local dirs");
+          it.remove();
+          numFailures++;
+        }
+      }
+
+      if (localDirs.isEmpty()) {
+        throw new DiskErrorException(
+            "No mapred local directories are writable");
+      }
+    }
+  }
+
+  private LocalStorage localStorage;
+  private long lastCheckDirsTime;
+  private int lastNumFailures;
   private LocalDirAllocator localDirAllocator;
   private String[] localdirs;
   String taskTrackerName;
@@ -315,7 +409,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   private Localizer localizer;
   private int maxMapSlots;
   private int maxReduceSlots;
-  private int failures;
+  private int taskFailures;
   final long mapRetainSize;
   final long reduceRetainSize;
 
@@ -326,7 +420,8 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   static final String TT_OUTOFBAND_HEARBEAT =
     "mapreduce.tasktracker.outofband.heartbeat";
   private volatile boolean oobHeartbeatOnTaskCompletion;
-  
+  private boolean manageOsCacheInShuffle = false;
+
   // Track number of completed tasks to send an out-of-band heartbeat
   private IntWritable finishedCount = new IntWritable(0);
   
@@ -342,11 +437,14 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   private long mapSlotMemorySizeOnTT = JobConf.DISABLED_MEMORY_LIMIT;
   private long reduceSlotSizeMemoryOnTT = JobConf.DISABLED_MEMORY_LIMIT;
   private long totalMemoryAllottedForTasks = JobConf.DISABLED_MEMORY_LIMIT;
+  private ResourceCalculatorPlugin resourceCalculatorPlugin = null;
 
   private UserLogManager userLogManager;
 
   static final String MAPRED_TASKTRACKER_MEMORY_CALCULATOR_PLUGIN_PROPERTY =
       "mapred.tasktracker.memory_calculator_plugin";
+  public static final String TT_RESOURCE_CALCULATOR_PLUGIN = 
+      "mapreduce.tasktracker.resourcecalculatorplugin";
 
   private MRAsyncDiskService asyncDiskService;
   
@@ -370,7 +468,27 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
    * Handle to the specific instance of the {@link NodeHealthCheckerService}
    */
   private NodeHealthCheckerService healthChecker;
+
+  /**
+   * Thread which checks CPU usage of Jetty and shuts down the TT if it
+   * exceeds a configurable threshold.
+   */
+  private JettyBugMonitor jettyBugMonitor;
+
   
+  /**
+   * Configuration property for disk health check interval in milli seconds.
+   * Currently, configuring this to a value smaller than the heartbeat interval
+   * is equivalent to setting this to heartbeat interval value.
+   */
+  static final String DISK_HEALTH_CHECK_INTERVAL_PROPERTY =
+      "mapred.disk.healthChecker.interval";
+  /**
+   * How often TaskTracker needs to check the health of its disks.
+   * Default value is {@link MRConstants#DEFAULT_DISK_HEALTH_CHECK_INTERVAL}
+   */
+  private long diskHealthCheckInterval;
+
   /*
    * A list of commitTaskActions for whom commit response has been received 
    */
@@ -699,7 +817,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
    * @throws IOException
    */
   private void deleteUserDirectories(Configuration conf) throws IOException {
-    for(String root: localdirs) {
+    for(String root: localStorage.getDirs()) {
       for(FileStatus status: localFs.listStatus(new Path(root, SUBDIR))) {
         String owner = status.getOwner();
         String path = status.getPath().getName();
@@ -711,45 +829,54 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   }
 
   void initializeDirectories() throws IOException {
-    localFs = FileSystem.getLocal(fConf);
-    checkLocalDirs(localFs, localdirs = this.fConf.getLocalDirs(), true);
+    final String dirs = localStorage.getDirsString();
+    fConf.setStrings(JobConf.MAPRED_LOCAL_DIR_PROPERTY, dirs);
+    LOG.info("Good mapred local directories are: " + dirs);
+    taskController.setConf(fConf);
+    if (server != null) {
+      server.setAttribute("conf", fConf);
+    }
+
     deleteUserDirectories(fConf);
+
     asyncDiskService = new MRAsyncDiskService(fConf);
     asyncDiskService.cleanupAllVolumes();
 
     final FsPermission ttdir = FsPermission.createImmutable((short) 0755);
-    for (String s : localdirs) {
+    for (String s : localStorage.getDirs()) {
       localFs.mkdirs(new Path(s, SUBDIR), ttdir);
     }
+    // NB: deleteLocalFiles uses the configured local dirs, but does not
+    // fail if a local directory has failed.
     fConf.deleteLocalFiles(TT_PRIVATE_DIR);
     final FsPermission priv = FsPermission.createImmutable((short) 0700);
-    for (String s : localdirs) {
+    for (String s : localStorage.getDirs()) {
       localFs.mkdirs(new Path(s, TT_PRIVATE_DIR), priv);
     }
     fConf.deleteLocalFiles(TT_LOG_TMP_DIR);
     final FsPermission pub = FsPermission.createImmutable((short) 0755);
-    for (String s : localdirs) {
+    for (String s : localStorage.getDirs()) {
       localFs.mkdirs(new Path(s, TT_LOG_TMP_DIR), pub);
     }
-
-    // Set up the user log directory
-    File taskLog = TaskLog.getUserLogDir();
-    if (!taskLog.isDirectory() && !taskLog.mkdirs()) {
-      LOG.warn("Unable to create taskLog directory : " + taskLog.getPath());
-    } else {
-      Path taskLogDir = new Path(taskLog.getCanonicalPath());
-      try {
-        localFs.setPermission(taskLogDir,
-                              new FsPermission((short)0755));
-      } catch (IOException ioe) {
-        throw new IOException(
-          "Unable to set permissions on task log directory. " +
-          taskLogDir + " should be owned by " +
-          "and accessible by user '" + System.getProperty("user.name") +
-          "'.", ioe);
+    // Create userlogs directory under all good mapred-local-dirs
+    for (String s : localStorage.getDirs()) {
+      Path userLogsDir = new Path(s, TaskLog.USERLOGS_DIR_NAME);
+      if (!localFs.exists(userLogsDir)) {
+        if (!localFs.mkdirs(userLogsDir, pub)) {
+          LOG.warn("Unable to create task log directory: " + userLogsDir);
+        }
+      } else {
+        try {
+          localFs.setPermission(userLogsDir, new FsPermission((short)0755));
+        } catch (IOException ioe) {
+          throw new IOException(
+            "Unable to set permissions on task log directory. " +
+            userLogsDir + " should be owned by " +
+            "and accessible by user '" + System.getProperty("user.name") +
+            "'.", ioe);
+        }
       }
     }
-    DiskChecker.checkDir(TaskLog.getUserLogDir());
   }
 
   private void checkSecurityRequirements() throws IOException {
@@ -890,6 +1017,12 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
                              taskTrackerName);
     mapEventsFetcher.start();
 
+    Class<? extends ResourceCalculatorPlugin> clazz =
+        fConf.getClass(TT_RESOURCE_CALCULATOR_PLUGIN,
+                       null, ResourceCalculatorPlugin.class);
+    resourceCalculatorPlugin = 
+      ResourceCalculatorPlugin.getResourceCalculatorPlugin(clazz, fConf);
+    LOG.info(" Using ResourceCalculatorPlugin : " + resourceCalculatorPlugin);
     initializeMemoryManagement();
 
     getUserLogManager().clearOldUserLogs(fConf);
@@ -902,15 +1035,29 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     reduceLauncher.start();
 
     // create a localizer instance
-    setLocalizer(new Localizer(localFs, fConf.getLocalDirs()));
+    setLocalizer(new Localizer(localFs, localStorage.getDirs()));
 
     //Start up node health checker service.
     if (shouldStartHealthMonitor(this.fConf)) {
       startHealthMonitor(this.fConf);
     }
     
+    // Start thread to monitor jetty bugs
+    startJettyBugMonitor();
+    
     oobHeartbeatOnTaskCompletion = 
       fConf.getBoolean(TT_OUTOFBAND_HEARBEAT, true);
+    
+    manageOsCacheInShuffle = fConf.getBoolean(
+        "mapred.tasktracker.shuffle.fadvise",
+        true);
+  }
+
+  private void startJettyBugMonitor() {
+    jettyBugMonitor = JettyBugMonitor.create(fConf);
+    if (jettyBugMonitor != null) {
+      jettyBugMonitor.start();
+    }
   }
 
   UserGroupInformation getMROwner() {
@@ -945,7 +1092,9 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
    */
   @Deprecated
   public void cleanupStorage() throws IOException {
-    this.fConf.deleteLocalFiles();
+    this.fConf.deleteLocalFiles(SUBDIR);
+    this.fConf.deleteLocalFiles(TT_PRIVATE_DIR);
+    this.fConf.deleteLocalFiles(TT_LOG_TMP_DIR);
   }
 
   // Object on wait which MapEventsFetcherThread is going to wait.
@@ -1346,6 +1495,8 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   private void launchTaskForJob(TaskInProgress tip, JobConf jobConf,
                                 RunningJob rjob) throws IOException {
     synchronized (tip) {
+      jobConf.set(JobConf.MAPRED_LOCAL_DIR_PROPERTY,
+                  localStorage.getDirsString());
       tip.setJobConf(jobConf);
       tip.setUGI(rjob.ugi);
       tip.launchTask(rjob);
@@ -1387,8 +1538,13 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
 
     // Clear local storage
     if (asyncDiskService != null) {
+
       // Clear local storage
-      asyncDiskService.cleanupAllVolumes();
+      try {
+        asyncDiskService.cleanupAllVolumes();
+      } catch (Exception ioe) {
+        LOG.warn("IOException shutting down TaskTracker", ioe);
+      }
       
       // Shutdown all async deletion threads with up to 10 seconds of delay
       asyncDiskService.shutdown();
@@ -1438,6 +1594,12 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
         {
             nettyShuffle.stop();
         }
+	    if (jettyBugMonitor != null) {
+      jettyBugMonitor.shutdown();
+      jettyBugMonitor = null;
+    }
+
+	
     }
   /**
    * For testing
@@ -1453,6 +1615,14 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     fConf = conf;
   }
 
+  void setLocalStorage(LocalStorage in) {
+    localStorage = in;
+  }
+	  
+  void setLocalDirAllocator(LocalDirAllocator in) {
+    localDirAllocator = in;
+  }
+  
   /**
    * Start with the local machine name, and the default JobTracker
    */
@@ -1463,6 +1633,8 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
                   "mapred.tasktracker.map.tasks.maximum", 2);
     maxReduceSlots = conf.getInt(
                   "mapred.tasktracker.reduce.tasks.maximum", 2);
+    diskHealthCheckInterval = conf.getLong(DISK_HEALTH_CHECK_INTERVAL_PROPERTY,
+                                           DEFAULT_DISK_HEALTH_CHECK_INTERVAL);
     aclsManager = new ACLsManager(conf, new JobACLsManager(conf), null);
     this.jobTrackAddr = JobTracker.getAddress(conf);
     String infoAddr = 
@@ -1485,9 +1657,15 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     Class<? extends TaskController> taskControllerClass = 
       conf.getClass("mapred.task.tracker.task-controller", 
                      DefaultTaskController.class, TaskController.class);
-   taskController = 
-     (TaskController) ReflectionUtils.newInstance(taskControllerClass, conf);
-   taskController.setup(localDirAllocator);
+
+    fConf = new JobConf(conf);
+    localFs = FileSystem.getLocal(fConf);
+    localStorage = new LocalStorage(fConf.getLocalDirs());
+    localStorage.checkDirs(localFs, true);
+    taskController = 
+      (TaskController)ReflectionUtils.newInstance(taskControllerClass, fConf);
+    taskController.setup(localDirAllocator, localStorage);
+    lastNumFailures = localStorage.numFailures();
 
     // create user log manager
     setUserLogManager(new UserLogManager(conf, taskController));
@@ -1496,7 +1674,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     initialize();
     server.setAttribute("task.tracker", this);
     server.setAttribute("local.file.system", local);
-    server.setAttribute("conf", conf);
+
     server.setAttribute("log", LOG);
     server.setAttribute("localDirAllocator", localDirAllocator);
     server.setAttribute("shuffleServerMetrics", shuffleServerMetrics);
@@ -1635,7 +1813,19 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
           systemDirectory = new Path(dir);
           systemFS = systemDirectory.getFileSystem(fConf);
         }
-        
+
+        now = System.currentTimeMillis();
+        if (now > (lastCheckDirsTime + diskHealthCheckInterval)) {
+          localStorage.checkDirs(localFs, false);
+          lastCheckDirsTime = now;
+          int numFailures = localStorage.numFailures();
+          // Re-init the task tracker if there were any new failures
+          if (numFailures > lastNumFailures) {
+            lastNumFailures = numFailures;
+            return State.STALE;
+          }
+        }
+
         // Send the heartbeat and process the jobtracker's directives
         HeartbeatResponse heartbeatResponse = transmitHeartBeat(now);
 
@@ -1734,7 +1924,8 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
           jobClient.reportTaskTrackerError(taskTrackerName, 
                                            "DiskErrorException", msg);
         }
-        return State.STALE;
+        // If we caught a DEE here we have no good dirs, therefore shutdown.
+        return State.DENIED;
       } catch (RemoteException re) {
         String reClass = re.getClassName();
         if (DisallowedTaskTrackerException.class.getName().equals(reClass)) {
@@ -1785,7 +1976,8 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
                                        httpPort, 
                                        cloneAndResetRunningTaskStatuses(
                                          sendCounters), 
-                                       failures, 
+                                       taskFailures,
+                                       localStorage.numFailures(),
                                        maxMapSlots,
                                        maxReduceSlots); 
       }
@@ -1807,11 +1999,16 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
       localMinSpaceStart = minSpaceStart;
     }
     if (askForNewTask) {
-      checkLocalDirs(localFs, fConf.getLocalDirs(), false);
       askForNewTask = enoughFreeSpace(localMinSpaceStart);
       long freeDiskSpace = getFreeSpace();
       long totVmem = getTotalVirtualMemoryOnTT();
       long totPmem = getTotalPhysicalMemoryOnTT();
+      long availableVmem = getAvailableVirtualMemoryOnTT();
+      long availablePmem = getAvailablePhysicalMemoryOnTT();
+      long cumuCpuTime = getCumulativeCpuTimeOnTT();
+      long cpuFreq = getCpuFrequencyOnTT();
+      int numCpu = getNumProcessorsOnTT();
+      float cpuUsage = getCpuUsageOnTT();
 
       status.getResourceStatus().setAvailableSpace(freeDiskSpace);
       status.getResourceStatus().setTotalVirtualMemory(totVmem);
@@ -1820,6 +2017,12 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
           mapSlotMemorySizeOnTT);
       status.getResourceStatus().setReduceSlotMemorySizeOnTT(
           reduceSlotSizeMemoryOnTT);
+      status.getResourceStatus().setAvailableVirtualMemory(availableVmem); 
+      status.getResourceStatus().setAvailablePhysicalMemory(availablePmem);
+      status.getResourceStatus().setCumulativeCpuTime(cumuCpuTime);
+      status.getResourceStatus().setCpuFrequency(cpuFreq);
+      status.getResourceStatus().setNumProcessors(numCpu);
+      status.getResourceStatus().setCpuUsage(cpuUsage);
     }
     //add node health information
     
@@ -1896,6 +2099,80 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     return totalPhysicalMemoryOnTT;
   }
 
+  /**
+   * Return the free virtual memory available on this TaskTracker.
+   * @return total size of free virtual memory.
+   */
+  long getAvailableVirtualMemoryOnTT() {
+    long availableVirtualMemoryOnTT = TaskTrackerStatus.UNAVAILABLE;
+    if (resourceCalculatorPlugin != null) {
+      availableVirtualMemoryOnTT =
+              resourceCalculatorPlugin.getAvailableVirtualMemorySize();
+    }
+    return availableVirtualMemoryOnTT;
+  }
+
+  /**
+   * Return the free physical memory available on this TaskTracker.
+   * @return total size of free physical memory in bytes
+   */
+  long getAvailablePhysicalMemoryOnTT() {
+    long availablePhysicalMemoryOnTT = TaskTrackerStatus.UNAVAILABLE;
+    if (resourceCalculatorPlugin != null) {
+      availablePhysicalMemoryOnTT =
+              resourceCalculatorPlugin.getAvailablePhysicalMemorySize();
+    }
+    return availablePhysicalMemoryOnTT;
+  }
+
+  /**
+   * Return the cumulative CPU used time on this TaskTracker since system is on
+   * @return cumulative CPU used time in millisecond
+   */
+  long getCumulativeCpuTimeOnTT() {
+    long cumulativeCpuTime = TaskTrackerStatus.UNAVAILABLE;
+    if (resourceCalculatorPlugin != null) {
+      cumulativeCpuTime = resourceCalculatorPlugin.getCumulativeCpuTime();
+    }
+    return cumulativeCpuTime;
+  }
+
+  /**
+   * Return the number of Processors on this TaskTracker
+   * @return number of processors
+   */
+  int getNumProcessorsOnTT() {
+    int numProcessors = TaskTrackerStatus.UNAVAILABLE;
+    if (resourceCalculatorPlugin != null) {
+      numProcessors = resourceCalculatorPlugin.getNumProcessors();
+    }
+    return numProcessors;
+  }
+
+  /**
+   * Return the CPU frequency of this TaskTracker
+   * @return CPU frequency in kHz
+   */
+  long getCpuFrequencyOnTT() {
+    long cpuFrequency = TaskTrackerStatus.UNAVAILABLE;
+    if (resourceCalculatorPlugin != null) {
+      cpuFrequency = resourceCalculatorPlugin.getCpuFrequency();
+    }
+    return cpuFrequency;
+  }
+
+  /**
+   * Return the CPU usage in % of this TaskTracker
+   * @return CPU usage in %
+   */
+  float getCpuUsageOnTT() {
+    float cpuUsage = TaskTrackerStatus.UNAVAILABLE;
+    if (resourceCalculatorPlugin != null) {
+      cpuUsage = resourceCalculatorPlugin.getCpuUsage();
+    }
+    return cpuUsage;
+  }
+  
   long getTotalMemoryAllottedForTasksOnTT() {
     return totalMemoryAllottedForTasks;
   }
@@ -2012,8 +2289,9 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
       runningJobs.remove(jobId);
     }
     getJobTokenSecretManager().removeTokenForJob(jobId.toString());  
-  }      
-    
+    distributedCacheManager.removeTaskDistributedCacheManager(jobId);
+  }
+
   /**
    * This job's files are no longer needed on this TT, remove them.
    *
@@ -2028,7 +2306,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
                                          jobDir.substring(userDir.length()));
     directoryCleanupThread.addToQueue(jobCleanup);
     
-    for (String str : localdirs) {
+    for (String str : localStorage.getDirs()) {
       Path ttPrivateJobDir = FileSystem.getLocal(fConf).makeQualified(
         new Path(str, TaskTracker.getPrivateDirForJob(user, jobId.toString())));
       PathDeletionContext ttPrivateJobCleanup =
@@ -2150,7 +2428,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
   
   private long getFreeSpace() throws IOException {
     long biggestSeenSoFar = 0;
-    String[] localDirs = fConf.getLocalDirs();
+    String[] localDirs = localStorage.getDirs();
     for (int i = 0; i < localDirs.length; i++) {
       DF df = null;
       if (localDirsDf.containsKey(localDirs[i])) {
@@ -2401,7 +2679,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
       getUserLogManager().start();
       startCleanupThreads();
       boolean denied = false;
-      while (running && !shuttingDown && !denied) {
+      while (running && !shuttingDown) {
         boolean staleState = false;
         try {
           // This while-loop attempts reconnects if we get network errors
@@ -2425,9 +2703,15 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
             }
           }
         } finally {
-          close();
+          // If denied we'll close via shutdown below. We should close
+          // here even if shuttingDown as shuttingDown can be set even
+          // if shutdown is not called.
+          if (!denied) {
+            close();
+          }
         }
         if (shuttingDown) { return; }
+        if (denied) { break; }
         LOG.warn("Reinitializing local state");
         initialize();
       }
@@ -2438,8 +2722,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
       LOG.error("Got fatal exception while reinitializing TaskTracker: " +
                 StringUtils.stringifyException(iex));
       return;
-    }
-    catch (InterruptedException i) {
+    } catch (InterruptedException i) {
       LOG.error("Got interrupted while reinitializing TaskTracker: " +
           i.getMessage());
       return;
@@ -2791,7 +3074,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
         }
         if (!done) {
           if (!wasKilled) {
-            failures += 1;
+            taskFailures++;
             setTaskFailState(true);
             // call the script here for the failed tasks.
             if (debugCommand != null) {
@@ -3031,7 +3314,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
           isCleaningup()) {
         wasKilled = true;
         if (wasFailure) {
-          failures += 1;
+          taskFailures++;
         }
         // runner could be null if task-cleanup attempt is not localized yet
         if (runner != null) {
@@ -3040,7 +3323,7 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
         setTaskFailState(wasFailure);
       } else if (taskStatus.getRunState() == TaskStatus.State.UNASSIGNED) {
         if (wasFailure) {
-          failures += 1;
+          taskFailures++;
           taskStatus.setRunState(TaskStatus.State.FAILED);
         } else {
           taskStatus.setRunState(TaskStatus.State.KILLED);
@@ -3268,7 +3551,12 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     ensureAuthorizedJVM(taskid.getJobID());
     TaskInProgress tip = tasks.get(taskid);
     if (tip != null) {
-      validateJVM(tip, jvmContext, taskid);
+      try {
+        validateJVM(tip, jvmContext, taskid);
+      } catch (IOException ie) {
+        LOG.warn("Failed validating JVM", ie);
+        return false;
+      }
       tip.reportProgress(taskStatus);
       return true;
     } else {
@@ -3345,7 +3633,9 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     LOG.info("Task " + taskid + " is in commit-pending," +"" +
              " task state:" +taskStatus.getRunState());
     // validateJVM is done in statusUpdate
-    statusUpdate(taskid, taskStatus, jvmContext);
+    if (!statusUpdate(taskid, taskStatus, jvmContext)) {
+      throw new IOException("Task not found for taskid: " + taskid);
+    }
     reportTaskFinished(taskid, true);
   }
   
@@ -3874,6 +4164,12 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
         mapOutputIn = SecureIOUtils.openForRead(
             new File(mapOutputFileName.toUri().getPath()), runAsUserName);
 
+        // readahead if possible
+        if (tracker.manageOsCacheInShuffle && info.partLength > 0) {
+          NativeIO.posixFadviseIfPossible(mapOutputIn.getFD(),
+              info.startOffset, info.partLength, NativeIO.POSIX_FADV_WILLNEED);
+        }
+
         //seek to the correct offset for the reduce
         mapOutputIn.skip(info.startOffset);
         long rem = info.partLength;
@@ -3894,6 +4190,12 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
             mapOutputIn.read(buffer, 0, (int)Math.min(rem, MAX_BYTES_TO_READ));
         }
         
+        // drop cache if possible
+        if (tracker.manageOsCacheInShuffle && info.partLength > 0) {
+          NativeIO.posixFadviseIfPossible(mapOutputIn.getFD(),
+              info.startOffset, info.partLength, NativeIO.POSIX_FADV_DONTNEED);
+        }
+
         if (LOG.isDebugEnabled()) {
           LOG.info("Sent out " + totalRead + " bytes for reduce: " + reduce + 
                  " from map: " + mapId + " given " + info.partLength + "/" + 
@@ -4084,6 +4386,10 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
     return maxReduceSlots;
   }
 
+  int getNumDirFailures() {
+    return localStorage.numFailures();
+  }
+
   //called from unit test
   synchronized void setMaxMapSlots(int mapSlots) {
     maxMapSlots = mapSlots;
@@ -4152,25 +4458,31 @@ public class TaskTracker implements MRConstants, TaskUmbilicalProtocol,
           JobConf.UPPER_LIMIT_ON_TASK_VMEM_PROPERTY));
     }
 
-    Class<? extends MemoryCalculatorPlugin> clazz =
-        fConf.getClass(MAPRED_TASKTRACKER_MEMORY_CALCULATOR_PLUGIN_PROPERTY,
-            null, MemoryCalculatorPlugin.class);
-    MemoryCalculatorPlugin memoryCalculatorPlugin =
-        MemoryCalculatorPlugin
-            .getMemoryCalculatorPlugin(clazz, fConf);
-    LOG.info(" Using MemoryCalculatorPlugin : " + memoryCalculatorPlugin);
-
-    if (memoryCalculatorPlugin != null) {
-      totalVirtualMemoryOnTT = memoryCalculatorPlugin.getVirtualMemorySize();
+    // Use TT_RESOURCE_CALCULATOR_PLUGIN if it is configured.
+    Class<? extends MemoryCalculatorPlugin> clazz = 
+      fConf.getClass(MAPRED_TASKTRACKER_MEMORY_CALCULATOR_PLUGIN_PROPERTY, 
+                     null, MemoryCalculatorPlugin.class); 
+    MemoryCalculatorPlugin memoryCalculatorPlugin = 
+      (clazz == null 
+       ? null 
+       : MemoryCalculatorPlugin.getMemoryCalculatorPlugin(clazz, fConf)); 
+    if (memoryCalculatorPlugin != null || resourceCalculatorPlugin != null) {
+      totalVirtualMemoryOnTT = 
+        (memoryCalculatorPlugin == null 
+         ? resourceCalculatorPlugin.getVirtualMemorySize() 
+         : memoryCalculatorPlugin.getVirtualMemorySize());
       if (totalVirtualMemoryOnTT <= 0) {
         LOG.warn("TaskTracker's totalVmem could not be calculated. "
-            + "Setting it to " + JobConf.DISABLED_MEMORY_LIMIT);
+                 + "Setting it to " + JobConf.DISABLED_MEMORY_LIMIT);
         totalVirtualMemoryOnTT = JobConf.DISABLED_MEMORY_LIMIT;
       }
-      totalPhysicalMemoryOnTT = memoryCalculatorPlugin.getPhysicalMemorySize();
+      totalPhysicalMemoryOnTT = 
+        (memoryCalculatorPlugin == null 
+         ? resourceCalculatorPlugin.getPhysicalMemorySize() 
+         : memoryCalculatorPlugin.getPhysicalMemorySize());
       if (totalPhysicalMemoryOnTT <= 0) {
         LOG.warn("TaskTracker's totalPmem could not be calculated. "
-            + "Setting it to " + JobConf.DISABLED_MEMORY_LIMIT);
+                 + "Setting it to " + JobConf.DISABLED_MEMORY_LIMIT);
         totalPhysicalMemoryOnTT = JobConf.DISABLED_MEMORY_LIMIT;
       }
     }

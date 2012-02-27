@@ -75,7 +75,7 @@ public abstract class Storage extends StorageInfo {
   
   private   static final String STORAGE_FILE_LOCK     = "in_use.lock";
   protected static final String STORAGE_FILE_VERSION  = "VERSION";
-  public static final String STORAGE_DIR_CURRENT   = "current";
+  public    static final String STORAGE_DIR_CURRENT   = "current";
   private   static final String STORAGE_DIR_PREVIOUS  = "previous";
   private   static final String STORAGE_TMP_REMOVED   = "removed.tmp";
   private   static final String STORAGE_TMP_PREVIOUS  = "previous.tmp";
@@ -172,18 +172,7 @@ public abstract class Storage extends StorageInfo {
   public Iterator<StorageDirectory> dirIterator(StorageDirType dirType) {
     return new DirIterator(dirType);
   }
-  
-  /**
-   * generate storage list (debug line)
-   */
-  public String listStorageDirectories() {
-    StringBuffer buf = new StringBuffer();
-    for (StorageDirectory sd : storageDirs) {
-      buf.append(sd.getRoot() + "(" + sd.getStorageDirType() + ");");
-    }
-    return buf.toString();
-  }
-  
+
   /**
    * One of the storage directories.
    */

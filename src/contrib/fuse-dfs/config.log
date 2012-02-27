@@ -28,7 +28,7 @@ hostinfo               = unknown
 /bin/universe          = unknown
 
 PATH: /opt/cloudera/toolchain/JDK6u20-64bit/bin
-PATH: /opt/cloudera/toolchain/apache-maven-3.0/bin
+PATH: /opt/cloudera/toolchain/apache-maven-3.0.2/bin
 PATH: /opt/cloudera/toolchain/Ant-1.8.1/bin
 PATH: /usr/kerberos/bin
 PATH: /usr/local/bin
@@ -462,7 +462,7 @@ configure:5866: test -s conftest.o
 configure:5869: $? = 0
 configure:5934: result: no
 configure:5959: checking Checking EXTERNAL_PATH set to
-configure:5991: result: /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs
+configure:5991: result: /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs
 configure:6006: checking whether to enable optimized build
 configure:6028: result: yes
 configure:6057: checking whether to enable static mode
@@ -563,16 +563,16 @@ am_cv_CXX_dependencies_compiler_type=gcc3
 ## Output variables. ##
 ## ----------------- ##
 
-ACLOCAL='${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run aclocal-1.9'
+ACLOCAL='${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run aclocal-1.9'
 AMDEPBACKSLASH='\'
 AMDEP_FALSE='#'
 AMDEP_TRUE=''
-AMTAR='${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run tar'
+AMTAR='${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run tar'
 ANT='/opt/cloudera/toolchain/Ant-1.8.1/bin/ant'
 AR='/usr/bin/ar'
-AUTOCONF='${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run autoconf'
-AUTOHEADER='${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run autoheader'
-AUTOMAKE='${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run automake-1.9'
+AUTOCONF='${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run autoconf'
+AUTOHEADER='${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run autoheader'
+AUTOMAKE='${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run automake-1.9'
 AWK='gawk'
 BASH='/bin/sh'
 CC='gcc'
@@ -593,9 +593,9 @@ ECHO_N='-n'
 ECHO_T=''
 EGREP='grep -E'
 EXEEXT=''
-EXTERNAL_PATH='/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs'
-GLOBAL_FOOTER_MK='include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_footer.mk'
-GLOBAL_HEADER_MK='include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_header.mk'
+EXTERNAL_PATH='/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs'
+GLOBAL_FOOTER_MK='include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_footer.mk'
+GLOBAL_HEADER_MK='include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_header.mk'
 INSTALL_DATA='${INSTALL} -m 644'
 INSTALL_PROGRAM='${INSTALL}'
 INSTALL_SCRIPT='${INSTALL}'
@@ -605,7 +605,7 @@ LIBOBJS=''
 LIBS=''
 LTLIBOBJS=''
 LTYPE='.a'
-MAKEINFO='${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run makeinfo'
+MAKEINFO='${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run makeinfo'
 OBJEXT='o'
 OPT_FALSE='#'
 OPT_TRUE=''
@@ -659,14 +659,14 @@ host_os='linux-gnu'
 host_vendor='unknown'
 includedir='${prefix}/include'
 infodir='${prefix}/info'
-install_sh='/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/install-sh'
+install_sh='/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/install-sh'
 libdir='${exec_prefix}/lib'
 libexecdir='${exec_prefix}/libexec'
 localstatedir='${prefix}/var'
 mandir='${prefix}/man'
 mkdir_p='mkdir -p --'
 oldincludedir='/usr/include'
-prefix='/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs'
+prefix='/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs'
 program_transform_name='s,x,x,'
 sbindir='${exec_prefix}/sbin'
 sharedstatedir='${prefix}/com'

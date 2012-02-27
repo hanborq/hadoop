@@ -48,6 +48,35 @@ public class NativeIO {
   public static final int O_FSYNC = O_SYNC;
   public static final int O_NDELAY = O_NONBLOCK;
 
+  // Flags for posix_fadvise() from bits/fcntl.h
+  /* No further special treatment.  */
+  public static final int POSIX_FADV_NORMAL = 0; 
+  /* Expect random page references.  */
+  public static final int POSIX_FADV_RANDOM = 1; 
+  /* Expect sequential page references.  */
+  public static final int POSIX_FADV_SEQUENTIAL = 2; 
+  /* Will need these pages.  */
+  public static final int POSIX_FADV_WILLNEED = 3; 
+  /* Don't need these pages.  */
+  public static final int POSIX_FADV_DONTNEED = 4; 
+  /* Data will be accessed once.  */
+  public static final int POSIX_FADV_NOREUSE = 5; 
+
+
+  /* Wait upon writeout of all pages
+     in the range before performing the
+     write.  */
+  public static final int SYNC_FILE_RANGE_WAIT_BEFORE = 1;
+  /* Initiate writeout of all those
+     dirty pages in the range which are
+     not presently under writeback.  */
+  public static final int SYNC_FILE_RANGE_WRITE = 2;
+
+  /* Wait upon writeout of all pages in
+     the range after performing the
+     write.  */
+  public static final int SYNC_FILE_RANGE_WAIT_AFTER = 4;
+
   private static final Log LOG = LogFactory.getLog(NativeIO.class);
 
   private static boolean nativeLoaded = false;
@@ -89,8 +118,15 @@ public class NativeIO {
   /** Wrapper around chmod(2) */
   public static native void chmod(String path, int mode) throws IOException;
 
+  static native void posix_fadvise(
+    FileDescriptor fd, long offset, long len, int flags) throws NativeIOException;
+
+  static native void sync_file_range(
+    FileDescriptor fd, long offset, long nbytes, int flags) throws NativeIOException;
+
   private static native long getUIDForFDOwner(FileDescriptor fd) throws IOException;
   private static native String getUserName(long uid) throws IOException;
+
 
   /** Initialize the JNI method ID and class ID cache */
   private static native void initNative();
@@ -107,6 +143,8 @@ public class NativeIO {
     new ConcurrentHashMap<Long, CachedUid>();
   private static long cacheTimeout;
   private static boolean initialized = false;
+  private static boolean fadvisePossible = true;
+  private static boolean syncFileRangePossible = true;
   
   public static String getOwner(FileDescriptor fd) throws IOException {
     ensureInitialized();
@@ -123,7 +161,49 @@ public class NativeIO {
     uidCache.put(uid, cUid);
     return user;
   }
-    
+  
+  /**
+   * Call posix_fadvise on the given file descriptor. See the manpage
+   * for this syscall for more information. On systems where this
+   * call is not available, does nothing.
+   *
+   * @throws NativeIOException if there is an error with the syscall
+   */
+  public static void posixFadviseIfPossible(
+      FileDescriptor fd, long offset, long len, int flags)
+      throws NativeIOException {
+    if (nativeLoaded && fadvisePossible) {
+      try {
+        posix_fadvise(fd, offset, len, flags);
+      } catch (UnsupportedOperationException uoe) {
+        fadvisePossible = false;
+      } catch (UnsatisfiedLinkError ule) {
+        fadvisePossible = false;
+      }
+    }
+  }
+
+  /**
+   * Call sync_file_range on the given file descriptor. See the manpage
+   * for this syscall for more information. On systems where this
+   * call is not available, does nothing.
+   *
+   * @throws NativeIOException if there is an error with the syscall
+   */
+  public static void syncFileRangeIfPossible(
+      FileDescriptor fd, long offset, long nbytes, int flags)
+      throws NativeIOException {
+    if (nativeLoaded && syncFileRangePossible) {
+      try {
+        sync_file_range(fd, offset, nbytes, flags);
+      } catch (UnsupportedOperationException uoe) {
+        syncFileRangePossible = false;
+      } catch (UnsatisfiedLinkError ule) {
+        syncFileRangePossible = false;
+      }
+    }
+  }
+
   private synchronized static void ensureInitialized() {
     if (!initialized) {
       cacheTimeout = 

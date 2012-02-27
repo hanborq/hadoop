@@ -925,8 +925,9 @@ public class MiniDFSCluster {
    * 
    * @param dataNodeIndex - data node whose block report is desired - the index is same as for getDataNodes()
    * @return the block report for the specified data node
+   * @throws InterruptedException
    */
-  public Block[] getBlockReport(int dataNodeIndex) {
+  public Block[] getBlockReport(int dataNodeIndex) throws InterruptedException {
     if (dataNodeIndex < 0 || dataNodeIndex > dataNodes.size()) {
       throw new IndexOutOfBoundsException();
     }
@@ -938,8 +939,9 @@ public class MiniDFSCluster {
    * 
    * @return block reports from all data nodes
    *    Block[] is indexed in the same order as the list of datanodes returned by getDataNodes()
+   * @throws InterruptedException
    */
-  public Block[][] getAllBlockReports() {
+  public Block[][] getAllBlockReports() throws InterruptedException {
     int numDataNodes = dataNodes.size();
     Block[][] result = new Block[numDataNodes][];
     for (int i = 0; i < numDataNodes; ++i) {

@@ -104,6 +104,11 @@
       rev="${xmlenc.version}"
       conf="server->default"/>
 
+    <dependency org="org.apache.hadoop.thirdparty.guava"
+      name="guava"
+      rev="r09-jarjar"
+      conf="client->default" />
+
     <!--Configuration: httpclient-->
 
     <!--
@@ -229,7 +234,7 @@
     <dependency org="commons-lang"
       name="commons-lang"
       rev="${commons-lang.version}"
-      conf="releaseaudit->default"/>
+      conf="common->default"/>
     <dependency org="commons-collections"
       name="commons-collections"
       rev="${commons-collections.version}"

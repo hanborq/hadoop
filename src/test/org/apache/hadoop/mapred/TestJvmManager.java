@@ -28,9 +28,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.TrackerDistributedCacheManager;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.LocalDirAllocator;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JvmManager.JvmManagerForType;
 import org.apache.hadoop.mapred.JvmManager.JvmManagerForType.JvmRunner;
+import org.apache.hadoop.mapred.TaskTracker.LocalStorage;
 import org.apache.hadoop.mapred.TaskTracker.RunningJob;
 import org.apache.hadoop.mapred.TaskTracker.TaskInProgress;
 import org.apache.hadoop.mapred.UtilsForTests.InlineCleanupQueue;
@@ -75,8 +75,9 @@ public class TestJvmManager {
     tt.setTaskController((dtc = new DefaultTaskController()));
     Configuration conf = new Configuration();
     dtc.setConf(conf);
-    LocalDirAllocator ldirAlloc = new LocalDirAllocator("mapred.local.dir");
-    tt.getTaskController().setup(ldirAlloc);
+    LocalDirAllocator ldirAlloc =
+        new LocalDirAllocator(JobConf.MAPRED_LOCAL_DIR_PROPERTY);
+    tt.getTaskController().setup(ldirAlloc, new LocalStorage(ttConf.getLocalDirs()));
     JobID jobId = new JobID("test", 0);
     jvmManager = new JvmManager(tt);
     tt.setJvmManagerInstance(jvmManager);

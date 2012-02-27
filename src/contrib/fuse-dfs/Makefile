@@ -87,15 +87,15 @@ DIST_ARCHIVES = $(distdir).tar.gz
 GZIP_ENV = --best
 distuninstallcheck_listfiles = find . -type f -print
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run aclocal-1.9
+ACLOCAL = ${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run aclocal-1.9
 AMDEP_FALSE = #
 AMDEP_TRUE = 
-AMTAR = ${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run tar
+AMTAR = ${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run tar
 ANT = /opt/cloudera/toolchain/Ant-1.8.1/bin/ant
 AR = /usr/bin/ar
-AUTOCONF = ${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run autoconf
-AUTOHEADER = ${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run autoheader
-AUTOMAKE = ${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run automake-1.9
+AUTOCONF = ${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run autoconf
+AUTOHEADER = ${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run autoheader
+AUTOMAKE = ${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run automake-1.9
 AWK = gawk
 BASH = /bin/sh
 CC = gcc
@@ -116,9 +116,9 @@ ECHO_N = -n
 ECHO_T = 
 EGREP = grep -E
 EXEEXT = 
-EXTERNAL_PATH = /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs
-GLOBAL_FOOTER_MK = include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_footer.mk
-GLOBAL_HEADER_MK = include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_header.mk
+EXTERNAL_PATH = /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs
+GLOBAL_FOOTER_MK = include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_footer.mk
+GLOBAL_HEADER_MK = include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_header.mk
 INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
@@ -128,7 +128,7 @@ LIBOBJS =
 LIBS = 
 LTLIBOBJS = 
 LTYPE = .a
-MAKEINFO = ${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run makeinfo
+MAKEINFO = ${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run makeinfo
 OBJEXT = o
 OPT_FALSE = #
 OPT_TRUE = 
@@ -182,14 +182,14 @@ host_os = linux-gnu
 host_vendor = unknown
 includedir = ${prefix}/include
 infodir = ${prefix}/info
-install_sh = /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/install-sh
+install_sh = /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localstatedir = ${prefix}/var
 mandir = ${prefix}/man
 mkdir_p = mkdir -p --
 oldincludedir = /usr/include
-prefix = /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs
+prefix = /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs
 program_transform_name = s,x,x,
 sbindir = ${exec_prefix}/sbin
 sharedstatedir = ${prefix}/com
@@ -604,14 +604,14 @@ uninstall-info: uninstall-info-recursive
 	uninstall uninstall-am uninstall-info-am
 
 
-include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_header.mk
+include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_header.mk
 
 
 
 clean:
 	rm -rf autom4te.cache config.guess config.log config.status config.sub configure depcomp src/.deps install-sh Makefile.in src/Makefile.in src/Makefile missing Makefile src/fuse_dfs.o src/fuse_dfs aclocal.m4
 
-include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_footer.mk
+include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_footer.mk
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

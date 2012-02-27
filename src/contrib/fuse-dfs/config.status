@@ -453,7 +453,7 @@ s,@PACKAGE_VERSION@,0.1.0,;t t
 s,@PACKAGE_STRING@,fuse_dfs 0.1.0,;t t
 s,@PACKAGE_BUGREPORT@,,;t t
 s,@exec_prefix@,${prefix},;t t
-s,@prefix@,/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs,;t t
+s,@prefix@,/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs,;t t
 s,@program_transform_name@,s,x,x,,;t t
 s,@bindir@,${exec_prefix}/bin,;t t
 s,@sbindir@,${exec_prefix}/sbin,;t t
@@ -493,12 +493,12 @@ s,@INSTALL_DATA@,${INSTALL} -m 644,;t t
 s,@CYGPATH_W@,echo,;t t
 s,@PACKAGE@,fuse_dfs,;t t
 s,@VERSION@,0.1.0,;t t
-s,@ACLOCAL@,${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run aclocal-1.9,;t t
-s,@AUTOCONF@,${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run autoconf,;t t
-s,@AUTOMAKE@,${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run automake-1.9,;t t
-s,@AUTOHEADER@,${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run autoheader,;t t
-s,@MAKEINFO@,${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run makeinfo,;t t
-s,@install_sh@,/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/install-sh,;t t
+s,@ACLOCAL@,${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run aclocal-1.9,;t t
+s,@AUTOCONF@,${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run autoconf,;t t
+s,@AUTOMAKE@,${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run automake-1.9,;t t
+s,@AUTOHEADER@,${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run autoheader,;t t
+s,@MAKEINFO@,${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run makeinfo,;t t
+s,@install_sh@,/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/install-sh,;t t
 s,@STRIP@,,;t t
 s,@ac_ct_STRIP@,,;t t
 s,@INSTALL_STRIP_PROGRAM@,${SHELL} $(install_sh) -c -s,;t t
@@ -506,7 +506,7 @@ s,@mkdir_p@,mkdir -p --,;t t
 s,@AWK@,gawk,;t t
 s,@SET_MAKE@,,;t t
 s,@am__leading_dot@,.,;t t
-s,@AMTAR@,${SHELL} /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/missing --run tar,;t t
+s,@AMTAR@,${SHELL} /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/missing --run tar,;t t
 s,@am__tar@,${AMTAR} chof - "$$tardir",;t t
 s,@am__untar@,${AMTAR} xf -,;t t
 s,@CC@,gcc,;t t
@@ -540,9 +540,9 @@ s,@AR@,/usr/bin/ar,;t t
 s,@ANT@,/opt/cloudera/toolchain/Ant-1.8.1/bin/ant,;t t
 s,@CPP@,gcc -E,;t t
 s,@EGREP@,grep -E,;t t
-s,@EXTERNAL_PATH@,/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs,;t t
-s,@GLOBAL_HEADER_MK@,include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_header.mk,;t t
-s,@GLOBAL_FOOTER_MK@,include /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/contrib/fuse-dfs/global_footer.mk,;t t
+s,@EXTERNAL_PATH@,/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs,;t t
+s,@GLOBAL_HEADER_MK@,include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_header.mk,;t t
+s,@GLOBAL_FOOTER_MK@,include /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/contrib/fuse-dfs/global_footer.mk,;t t
 s,@OPT_TRUE@,,;t t
 s,@OPT_FALSE@,#,;t t
 s,@DEBUG_TRUE@,#,;t t

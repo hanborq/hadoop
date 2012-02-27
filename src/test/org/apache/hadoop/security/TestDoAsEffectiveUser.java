@@ -115,8 +115,8 @@ public class TestDoAsEffectiveUser {
             return UserGroupInformation.getCurrentUser();
           }
         });
-    Assert.assertTrue(curUGI.toString().equals(
-        PROXY_USER_NAME + " via " + REAL_USER_NAME));
+    Assert.assertEquals(curUGI.toString(),
+        PROXY_USER_NAME + " via " + REAL_USER_NAME + " (auth:SIMPLE) (auth:PROXY)");
   }
 
   @TokenInfo(TestTokenSelector.class)
@@ -169,7 +169,7 @@ public class TestDoAsEffectiveUser {
             }
           });
 
-      Assert.assertEquals(PROXY_USER_NAME + " via " + REAL_USER_NAME, retVal);
+      Assert.assertEquals(PROXY_USER_NAME + " via " + REAL_USER_NAME + " (auth:SIMPLE) (auth:SIMPLE)", retVal);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -212,7 +212,7 @@ public class TestDoAsEffectiveUser {
             }
           });
 
-      Assert.assertEquals(PROXY_USER_NAME + " via " + REAL_USER_NAME, retVal);
+      Assert.assertEquals(PROXY_USER_NAME + " via " + REAL_USER_NAME + " (auth:SIMPLE) (auth:SIMPLE)", retVal);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -446,7 +446,7 @@ public class TestDoAsEffectiveUser {
       }
     });
     //The user returned by server must be the one in the token.
-    Assert.assertEquals(REAL_USER_NAME + " via SomeSuperUser", retVal);
+    Assert.assertEquals(REAL_USER_NAME + " via SomeSuperUser (auth:SIMPLE) (auth:TOKEN)", retVal);
   }
 
   /*
@@ -497,7 +497,7 @@ public class TestDoAsEffectiveUser {
         }
       }
     });
-    String expected = REAL_USER_NAME + " via SomeSuperUser";
+    String expected = REAL_USER_NAME + " via SomeSuperUser (auth:SIMPLE) (auth:TOKEN)";
     Assert.assertEquals(retVal + "!=" + expected, expected, retVal);
   }
   

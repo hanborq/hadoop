@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.lang.Math;
 import java.nio.ByteBuffer;
 
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.PermissionStatus;
 import org.apache.hadoop.fs.permission.FsPermission;
@@ -116,23 +115,21 @@ public class FSImage extends Storage {
   FSEditLog editLog = null;
   private boolean isUpgradeFinalized = false;
 
-  /**
-   * flag that controls if we try to restore failed storages
-   */
   private boolean restoreFailedStorage = false;
+
   public void setRestoreFailedStorage(boolean val) {
-    LOG.info("enabled failed storage replicas restore");
     restoreFailedStorage=val;
   }
-  
+
   public boolean getRestoreFailedStorage() {
     return restoreFailedStorage;
   }
   
   /**
-   * list of failed (and thus removed) storages
+   * List of failed (and thus removed) storages
    */
-  protected List<StorageDirectory> removedStorageDirs = new ArrayList<StorageDirectory>();
+  private List<StorageDirectory> removedStorageDirs 
+    = new ArrayList<StorageDirectory>();
   
   /**
    * Directories for importing an image from a checkpoint.
@@ -185,9 +182,9 @@ public class FSImage extends Storage {
   void setStorageDirectories(Collection<File> fsNameDirs,
                         Collection<File> fsEditsDirs
                              ) throws IOException {
-    this.storageDirs = new ArrayList<StorageDirectory>();
-    this.removedStorageDirs = new ArrayList<StorageDirectory>();
-   // Add all name dirs with appropriate NameNodeDirType 
+    storageDirs = new ArrayList<StorageDirectory>();
+    removedStorageDirs = new ArrayList<StorageDirectory>();
+    // Add all name dirs with appropriate NameNodeDirType 
     for (File dirName : fsNameDirs) {
       boolean isAlsoEdits = false;
       for (File editsDirName : fsEditsDirs) {
@@ -200,13 +197,12 @@ public class FSImage extends Storage {
       NameNodeDirType dirType = (isAlsoEdits) ?
                           NameNodeDirType.IMAGE_AND_EDITS :
                           NameNodeDirType.IMAGE;
-      this.addStorageDir(new StorageDirectory(dirName, dirType));
+      addStorageDir(new StorageDirectory(dirName, dirType));
     }
     
     // Add edits dirs if they are different from name dirs
     for (File dirName : fsEditsDirs) {
-      this.addStorageDir(new StorageDirectory(dirName, 
-                    NameNodeDirType.EDITS));
+      addStorageDir(new StorageDirectory(dirName, NameNodeDirType.EDITS)); 
     }
   }
 
@@ -221,9 +217,14 @@ public class FSImage extends Storage {
   }
   
   List<StorageDirectory> getRemovedStorageDirs() {
-	  return this.removedStorageDirs;
+	  return removedStorageDirs;
   }
-  
+
+  void updateRemovedDirs(StorageDirectory sd, IOException ioe) {
+    LOG.warn("Removing storage dir " + sd.getRoot().getPath(), ioe);
+    removedStorageDirs.add(sd);
+  }
+
   File getEditFile(StorageDirectory sd) {
     return getImageFile(sd, NameNodeFile.EDITS);
   }
@@ -618,7 +619,7 @@ public class FSImage extends Storage {
   }
 
   /**
-   * Record new checkpoint time in order to
+   * Record new checkpoint time in each storage dir in order to
    * distinguish healthy directories from the removed ones.
    * If there is an error writing new checkpoint time, the corresponding
    * storage directory is removed from the list.
@@ -627,40 +628,34 @@ public class FSImage extends Storage {
     this.checkpointTime++;
     
     // Write new checkpoint time in all storage directories
-    for(Iterator<StorageDirectory> it =
-                          dirIterator(); it.hasNext();) {
+    Iterator<StorageDirectory> it = dirIterator(); 
+    while (it.hasNext()) {
       StorageDirectory sd = it.next();
       try {
         writeCheckpointTime(sd);
-      } catch(IOException e) {
-        // Close any edits stream associated with this dir and remove directory
-        LOG.warn("incrementCheckpointTime failed on " + sd.getRoot().getPath() + ";type="+sd.getStorageDirType());
-        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
-          editLog.processIOError(sd);
-        }
-
-        //add storage to the removed list
-        removedStorageDirs.add(sd);
+      } catch (IOException ioe) {
+        editLog.removeEditsForStorageDir(sd);
+        updateRemovedDirs(sd, ioe);
         it.remove();
       }
     }
+    editLog.exitIfNoStreams();
   }
   
   /**
-   * Remove storage directory given directory
+   * Remove the given storage directory.
    */
-  
-  void processIOError(File dirName) {
-    for (Iterator<StorageDirectory> it = 
-      dirIterator(); it.hasNext();) {
+  void removeStorageDir(File dir) {
+    Iterator<StorageDirectory> it = dirIterator();
+    while (it.hasNext()) {
       StorageDirectory sd = it.next();
-      if (sd.getRoot().getPath().equals(dirName.getPath())) {
-        //add storage to the removed list
-        LOG.warn("FSImage:processIOError: removing storage: " + dirName.getPath());
+      if (sd.getRoot().getPath().equals(dir.getPath())) {
         try {
-          sd.unlock(); //try to unlock before removing (in case it is restored)
-        } catch (Exception e) {}
-        removedStorageDirs.add(sd);
+          sd.unlock(); // Try to unlock before removing (in case it is restored)
+        } catch (Exception e) {
+          // Ignore
+        }
+        updateRemovedDirs(sd, null);
         it.remove();
       }
     }
@@ -668,6 +663,11 @@ public class FSImage extends Storage {
 
   public FSEditLog getEditLog() {
     return editLog;
+  }
+
+  /** Testing hook */
+  public void setEditLog(FSEditLog newLog) {
+    editLog = newLog;
   }
 
   public boolean isConversionNeeded(StorageDirectory sd) throws IOException {
@@ -1108,7 +1108,7 @@ public class FSImage extends Storage {
         moveCurrent(sd);
       } catch(IOException ie) {
         LOG.error("Unable to move current for " + sd.getRoot(), ie);
-        processIOError(sd.getRoot());
+        removeStorageDir(sd.getRoot());
       }
     }
 
@@ -1120,7 +1120,7 @@ public class FSImage extends Storage {
         saveCurrent(sd);
       } catch(IOException ie) {
         LOG.error("Unable to save image for " + sd.getRoot(), ie);
-        processIOError(sd.getRoot());
+        removeStorageDir(sd.getRoot());
       }
     }
 
@@ -1142,7 +1142,7 @@ public class FSImage extends Storage {
         saveCurrent(sd);
       } catch(IOException ie) {
         LOG.error("Unable to save edits for " + sd.getRoot(), ie);
-        processIOError(sd.getRoot());
+        removeStorageDir(sd.getRoot());
       }
     }
     // mv lastcheckpoint.tmp -> previous.checkpoint
@@ -1152,7 +1152,7 @@ public class FSImage extends Storage {
         moveLastCheckpoint(sd);
       } catch(IOException ie) {
         LOG.error("Unable to move last checkpoint for " + sd.getRoot(), ie);
-        processIOError(sd.getRoot());
+        removeStorageDir(sd.getRoot());
       }
     }
     if(!editLog.isOpen()) editLog.open();
@@ -1461,8 +1461,8 @@ public class FSImage extends Storage {
     if (!editLog.existsNew()) {
       throw new IOException("New Edits file does not exist");
     }
-    for (Iterator<StorageDirectory> it = 
-                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+    Iterator<StorageDirectory> it = dirIterator(NameNodeDirType.IMAGE);
+    while (it.hasNext()) {
       StorageDirectory sd = it.next();
       File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
       if (!ckpt.exists()) {
@@ -1471,34 +1471,27 @@ public class FSImage extends Storage {
       }
     }
     editLog.purgeEditLog(); // renamed edits.new to edits
-    LOG.debug("rollFSImage after purgeEditLog: storageList=" + listStorageDirectories());
+
     //
     // Renames new image
     //
-    for (Iterator<StorageDirectory> it = 
-                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+    it = dirIterator(NameNodeDirType.IMAGE);
+    while (it.hasNext()) {
       StorageDirectory sd = it.next();
       File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
       File curFile = getImageFile(sd, NameNodeFile.IMAGE);
       // renameTo fails on Windows if the destination file 
       // already exists.
-      LOG.debug("renaming  " + ckpt.getAbsolutePath() + " to "  + curFile.getAbsolutePath());
       if (!ckpt.renameTo(curFile)) {
         curFile.delete();
         if (!ckpt.renameTo(curFile)) {
-          LOG.warn("renaming  " + ckpt.getAbsolutePath() + " to "  + 
-              curFile.getAbsolutePath() + " FAILED");
-          
-          // Close edit stream, if this directory is also used for edits
-          if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
-            editLog.processIOError(sd);
-          
-          // add storage to the removed list
-          removedStorageDirs.add(sd);
+          editLog.removeEditsForStorageDir(sd);
+          updateRemovedDirs(sd, null);
           it.remove();
         }
       }
     }
+    editLog.exitIfNoStreams();
 
     //
     // Updates the fstime file on all directories (fsimage and edits)
@@ -1506,8 +1499,8 @@ public class FSImage extends Storage {
     //
     this.layoutVersion = FSConstants.LAYOUT_VERSION;
     this.checkpointTime = FSNamesystem.now();
-    for (Iterator<StorageDirectory> it = 
-                           dirIterator(); it.hasNext();) {
+    it = dirIterator();
+    while (it.hasNext()) {
       StorageDirectory sd = it.next();
       // delete old edits if sd is the image only the directory
       if (!sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
@@ -1521,13 +1514,9 @@ public class FSImage extends Storage {
       }
       try {
         sd.write();
-      } catch (IOException e) {
-        LOG.error("Cannot write file " + sd.getRoot(), e);
-        // Close edit stream, if this directory is also used for edits
-        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
-          editLog.processIOError(sd);
-      //add storage to the removed list
-        removedStorageDirs.add(sd);
+      } catch (IOException ioe) {
+        editLog.removeEditsForStorageDir(sd);
+        updateRemovedDirs(sd, ioe);
         it.remove();
       }
     }
@@ -1591,35 +1580,30 @@ public class FSImage extends Storage {
   }
 
   /**
-   * See if any of removed storages iw "writable" again, and can be returned 
-   * into service
+   * See if any of the removed storages dirs are writable and can be restored.
    */
-  void attemptRestoreRemovedStorage() {   
-    // if directory is "alive" - copy the images there...
-    if(!restoreFailedStorage || removedStorageDirs.size() == 0) 
-      return; //nothing to restore
-    
-    LOG.info("FSImage.attemptRestoreRemovedStorage: check removed(failed) " +
-    		"storarge. removedStorages size = " + removedStorageDirs.size());
-    for(Iterator<StorageDirectory> it = this.removedStorageDirs.iterator(); it.hasNext();) {
+  void attemptRestoreRemovedStorage() {
+    if (!restoreFailedStorage || removedStorageDirs.isEmpty()) {
+      return;
+    }
+
+    Iterator<StorageDirectory> it = removedStorageDirs.iterator();
+    while (it.hasNext()) {
       StorageDirectory sd = it.next();
       File root = sd.getRoot();
-      LOG.info("currently disabled dir " + root.getAbsolutePath() + 
-          "; type="+sd.getStorageDirType() + ";canwrite="+root.canWrite());
+      LOG.info("Try restore " + root.getAbsolutePath() + " type=" +
+          sd.getStorageDirType() + " canwrite=" + root.canWrite());
       try {
-        
-        if(root.exists() && root.canWrite()) { 
-          // when we try to restore we just need to remove all the data
-          // without saving current in-memory state (which could've changed).
+        if (root.exists() && root.canWrite()) {
+          // The directory will get re-populated during checkpoint
           sd.clearDirectory();
-          LOG.info("restoring dir " + sd.getRoot().getAbsolutePath());
-          this.addStorageDir(sd); // restore
+          addStorageDir(sd);
           it.remove();
         }
-      } catch(IOException e) {
-        LOG.warn("failed to restore " + sd.getRoot().getAbsolutePath(), e);
+      } catch (IOException ioe) {
+        LOG.warn("Failed to restore " + sd.getRoot().getAbsolutePath(), ioe);
       }
-    }    
+    }
   }
   
   public File getFsEditName() throws IOException {

@@ -138,7 +138,7 @@ public class TestSimulatedFSDataset extends TestCase {
 
 
 
-  public void testGetBlockReport() throws IOException {
+  public void testGetBlockReport() throws IOException, InterruptedException {
     FSDatasetInterface fsdataset = new SimulatedFSDataset(conf); 
     Block[] blockReport = fsdataset.getBlockReport();
     assertEquals(0, blockReport.length);
@@ -150,7 +150,7 @@ public class TestSimulatedFSDataset extends TestCase {
       assertEquals(blockIdToLen(b.getBlockId()), b.getNumBytes());
     }
   }
-  public void testInjectionEmpty() throws IOException {
+  public void testInjectionEmpty() throws IOException, InterruptedException {
     FSDatasetInterface fsdataset = new SimulatedFSDataset(conf); 
     Block[] blockReport = fsdataset.getBlockReport();
     assertEquals(0, blockReport.length);
@@ -179,7 +179,7 @@ public class TestSimulatedFSDataset extends TestCase {
     assertEquals(sfsdataset.getCapacity()-bytesAdded, sfsdataset.getRemaining());
   }
 
-  public void testInjectionNonEmpty() throws IOException {
+  public void testInjectionNonEmpty() throws IOException, InterruptedException {
     FSDatasetInterface fsdataset = new SimulatedFSDataset(conf); 
     
     Block[] blockReport = fsdataset.getBlockReport();

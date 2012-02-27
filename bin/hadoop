@@ -420,13 +420,12 @@ case "$_HADOOP_RUN_MODE" in
       # Even though we are trying to run a non-detached datanode,
       # jsvc will not write to stdout/stderr, so we have to pipe
       # it and tail the logfile.
-      log_path=/tmp/jsvc_${COMMAND}.$$
       _JSVC_FLAGS="-nodetach
                    -errfile &1
-                   -outfile $log_path"
-      echo Non-detached jsvc output piping to: $log_path
-      touch $log_path
-      tail -f $log_path &
+                   -outfile $HADOOP_LOG_DIR/jsvc.out"
+      echo Non-detached jsvc output piping to: $HADOOP_LOG_DIR/jsvc.out
+      touch $HADOOP_LOG_DIR/jsvc.out
+      tail -f $HADOOP_LOG_DIR/jsvc.out &
     fi
     unset _HADOOP_DAEMON_DETACHED
 

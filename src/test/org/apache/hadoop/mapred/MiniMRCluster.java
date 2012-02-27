@@ -146,6 +146,7 @@ public class MiniMRCluster {
     String[] localDirs;
     volatile boolean isInitialized = false;
     volatile boolean isDead = false;
+    volatile boolean exited = false;
     int numDir;
 
     TaskTrackerRunner(int trackerId, int numDir, String hostname, 
@@ -222,8 +223,9 @@ public class MiniMRCluster {
         tt = null;
         LOG.error("task tracker " + trackerId + " crashed", e);
       }
+      exited = true;
     }
-        
+ 
     /**
      * Get the local dir for this TaskTracker.
      * This is there so that we do not break

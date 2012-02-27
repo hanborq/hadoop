@@ -28,9 +28,11 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #define USER_DIR_PATTERN "%s/taskTracker/%s"
 
@@ -38,11 +40,13 @@
 
 #define ATTEMPT_DIR_PATTERN TT_JOB_DIR_PATTERN "/%s/work"
 
+#define USER_LOG_PATTERN "%s/userlogs/%s"
+
+#define TASK_DIR_PATTERN USER_LOG_PATTERN "/%s"
+
 #define TASK_SCRIPT "taskjvm.sh"
 
-#define TT_LOCAL_TASK_DIR_PATTERN    "%s/taskTracker/%s/jobcache/%s/%s"
-
-#define TT_SYS_DIR_KEY "mapred.local.dir"
+#define TT_LOCAL_TASK_DIR_PATTERN "%s/taskTracker/%s/jobcache/%s/%s"
 
 #define TT_LOG_DIR_KEY "hadoop.log.dir"
 
@@ -55,6 +59,8 @@
 static const int DEFAULT_MIN_USERID = 1000;
 
 #define BANNED_USERS_KEY "banned.users"
+
+#define USERLOGS "userlogs"
 
 static const char* DEFAULT_BANNED_USERS[] = {"mapred", "hdfs", "bin", 0};
 
@@ -135,7 +141,7 @@ int check_taskcontroller_permissions(char *executable_file) {
     return -1;
   }
 
-  // check others do not have read/write/execute permissions
+  // check others do not have write/execute permissions
   if ((filestat.st_mode & S_IWOTH) == S_IWOTH ||
       (filestat.st_mode & S_IXOTH) == S_IXOTH) {
     fprintf(LOGFILE,
@@ -207,6 +213,14 @@ int change_user(uid_t user, gid_t group) {
   }
 
   return 0;
+}
+
+/**
+ * Get the array of mapred local dirs from the given comma separated list of
+ * paths. Memory allocated using strdup here is freed up in free_values().
+ */
+char ** get_mapred_local_dirs(const char * good_local_dirs) {
+  return extract_values(strdup(good_local_dirs));
 }
 
 /**
@@ -288,7 +302,7 @@ char* get_job_log_directory(const char* jobid) {
     fprintf(LOGFILE, "Log directory %s is not configured.\n", TT_LOG_DIR_KEY);
     return NULL;
   }
-  char *result = concatenate("%s/userlogs/%s", "job log dir", 2, log_dir, 
+  char *result = concatenate(USER_LOG_PATTERN, "job log dir", 2, log_dir, 
                              jobid);
   if (result == NULL) {
     fprintf(LOGFILE, "failed to get memory in get_job_log_directory for %s"
@@ -349,12 +363,52 @@ int mkdirs(const char* path, mode_t perm) {
   return 0;
 }
 
+static short get_current_local_dir_count(char **local_dir)
+{
+  char **local_dir_ptr;
+  short count=0;
+
+  for(local_dir_ptr = local_dir; *local_dir_ptr != NULL; ++local_dir_ptr) {
+    ++count;
+  }
+  return count;
+}
+
+static char* get_nth_local_dir(char **local_dir, int nth)
+{
+  char **local_dir_ptr;
+  short count=0;
+
+  for(local_dir_ptr = local_dir; *local_dir_ptr != NULL; ++local_dir_ptr) {
+    if(count == nth) {
+      return strdup(*local_dir_ptr);
+    }
+    ++count;
+  }
+  fprintf(LOGFILE, "Invalid index %d for %d local directories\n", nth, count);
+  return NULL;
+}
+
+static char*  get_random_local_dir(char **local_dir) {
+  struct timeval tv;
+  short nth;
+  gettimeofday(&tv, NULL);
+  srand ( (long) tv.tv_sec*1000000 + tv.tv_usec );
+  short cnt = get_current_local_dir_count(local_dir);
+  if(cnt == 0) {
+    fprintf(LOGFILE, "No valid local directories\n");
+    return NULL;
+  }
+  nth = rand() % cnt;
+  return get_nth_local_dir(local_dir, nth);
+}
+
 /**
  * Function to prepare the attempt directories for the task JVM.
  * It creates the task work and log directories.
  */
-static int create_attempt_directories(const char* user, const char *job_id, 
-					const char *task_id) {
+int create_attempt_directories(const char* user,
+    const char * good_local_dirs, const char *job_id, const char *task_id) {
   // create dirs as 0750
   const mode_t perms = S_IRWXU | S_IRGRP | S_IXGRP;
   if (job_id == NULL || task_id == NULL || user == NULL) {
@@ -364,11 +418,11 @@ static int create_attempt_directories(const char* user, const char *job_id,
   }
   int result = 0;
 
-  char **local_dir = get_values(TT_SYS_DIR_KEY);
+  char **local_dir = get_mapred_local_dirs(good_local_dirs);
 
   if (local_dir == NULL) {
-    fprintf(LOGFILE, "%s is not configured.\n", TT_SYS_DIR_KEY);
-    return -1;
+    fprintf(LOGFILE, "Good mapred local directories could not be obtained.\n");
+    return INVALID_TT_ROOT;
   }
 
   char **local_dir_ptr;
@@ -386,24 +440,70 @@ static int create_attempt_directories(const char* user, const char *job_id,
       free(task_dir);
     }
   }
-  free_values(local_dir);
 
   // also make the directory for the task logs
   char *job_task_name = malloc(strlen(job_id) + strlen(task_id) + 2);
+  char *real_task_dir = NULL; // target of symlink
+  char *real_job_dir = NULL;  // parent dir of target of symlink
+  char *random_local_dir = NULL;
+  char *link_task_log_dir = NULL; // symlink
   if (job_task_name == NULL) {
     fprintf(LOGFILE, "Malloc of job task name failed\n");
     result = -1;
   } else {
     sprintf(job_task_name, "%s/%s", job_id, task_id);
-    char *log_dir = get_job_log_directory(job_task_name);
-    free(job_task_name);
-    if (log_dir == NULL) {
+    link_task_log_dir = get_job_log_directory(job_task_name);
+    random_local_dir = get_random_local_dir(local_dir);
+    if(random_local_dir == NULL) {
       result = -1;
-    } else if (mkdirs(log_dir, perms) != 0) {
-      result = -1;
+      goto cleanup;
     }
-    free(log_dir);
+    real_job_dir = malloc(strlen(random_local_dir) + strlen(USERLOGS) + 
+                          strlen(job_id) + 3);
+    if (real_job_dir == NULL) {
+      fprintf(LOGFILE, "Malloc of real job directory failed\n");
+      result = -1;
+      goto cleanup;
+    } 
+    real_task_dir = malloc(strlen(random_local_dir) + strlen(USERLOGS) + 
+                           strlen(job_id) + strlen(task_id) + 4);
+    if (real_task_dir == NULL) {
+      fprintf(LOGFILE, "Malloc of real task directory failed\n");
+      result = -1;
+      goto cleanup;
+    }
+    sprintf(real_job_dir, USER_LOG_PATTERN, random_local_dir, job_id);
+    result = create_directory_for_user(real_job_dir);
+    if( result != 0) {
+      result = -1;
+      goto cleanup;
+    }
+    sprintf(real_task_dir, TASK_DIR_PATTERN,
+            random_local_dir, job_id, task_id);
+    result = mkdirs(real_task_dir, perms); 
+    if( result != 0) {
+      fprintf(LOGFILE, "Failed to create real task dir %s - %s\n",
+              real_task_dir, strerror(errno));
+      result = -1; 
+      goto cleanup;
+    }
+    result = symlink(real_task_dir, link_task_log_dir);
+    if( result != 0) {
+      fprintf(LOGFILE, "Failed to create symlink %s to %s - %s\n",
+              link_task_log_dir, real_task_dir, strerror(errno));
+      result = -1;
+      goto cleanup;
+    }
   }
+
+ cleanup:
+  free(random_local_dir);
+  free(job_task_name);
+  free(link_task_log_dir);
+  free(real_job_dir);
+  free(real_task_dir);
+  free_values(local_dir);
+
   return result;
 }
 
@@ -517,7 +617,7 @@ static int change_owner(const char* path, uid_t user, gid_t group) {
 /**
  * Create a top level directory for the user.
  * It assumes that the parent directory is *not* writable by the user.
- * It creates directories with 02700 permissions owned by the user
+ * It creates directories with 02750 permissions owned by the user
  * and with the group set to the task tracker group.
  * return non-0 on failure
  */
@@ -627,10 +727,10 @@ static int copy_file(int input, const char* in_filename,
 /**
  * Function to initialize the user directories of a user.
  */
-int initialize_user(const char *user) {
-  char **local_dir = get_values(TT_SYS_DIR_KEY);
+int initialize_user(const char *user, const char * good_local_dirs) {
+  char **local_dir = get_mapred_local_dirs(good_local_dirs);
   if (local_dir == NULL) {
-    fprintf(LOGFILE, "%s is not configured.\n", TT_SYS_DIR_KEY);
+    fprintf(LOGFILE, "Good mapred local directories could ot be obtained.\n");
     return INVALID_TT_ROOT;
   }
 
@@ -656,16 +756,16 @@ int initialize_user(const char *user) {
 /**
  * Function to prepare the job directories for the task JVM.
  */
-int initialize_job(const char *user, const char *jobid, 
-		   const char* credentials, const char* job_xml,
-                   char* const* args) {
+int initialize_job(const char *user, const char * good_local_dirs,
+    const char *jobid, const char* credentials, const char* job_xml,
+    char* const* args) {
   if (jobid == NULL || user == NULL) {
     fprintf(LOGFILE, "Either jobid is null or the user passed is null.\n");
     return INVALID_ARGUMENT_NUMBER;
   }
 
   // create the user directory
-  int result = initialize_user(user);
+  int result = initialize_user(user, good_local_dirs);
   if (result != 0) {
     return result;
   }
@@ -699,10 +799,10 @@ int initialize_job(const char *user, const char *jobid,
 
   // 750
   mode_t permissions = S_IRWXU | S_IRGRP | S_IXGRP;
-  char **tt_roots = get_values(TT_SYS_DIR_KEY);
+  char **tt_roots = get_mapred_local_dirs(good_local_dirs);
 
   if (tt_roots == NULL) {
-    return INVALID_CONFIG_FILE;
+    return INVALID_TT_ROOT;
   }
 
   char **tt_root;
@@ -750,10 +850,9 @@ int initialize_job(const char *user, const char *jobid,
   fclose(stderr);
   if (chdir(primary_job_dir)) {
     fprintf(LOGFILE, "Failure to chdir to job dir - %s\n",
-      strerror(errno));
+            strerror(errno));
     return -1;
   }
-
   execvp(args[0], args);
   fprintf(LOGFILE, "Failure to exec job initialization process - %s\n",
 	  strerror(errno));
@@ -768,12 +867,12 @@ int initialize_job(const char *user, const char *jobid,
  * 4) Does an execlp on the same in order to replace the current image with
  *    task image.
  */
-int run_task_as_user(const char *user, const char *job_id, 
-                     const char *task_id, const char *work_dir,
-                     const char *script_name) {
+int run_task_as_user(const char *user, const char * good_local_dirs,
+                     const char *job_id, const char *task_id,
+                     const char *work_dir, const char *script_name) {
   int exit_code = -1;
   char *task_script_path = NULL;
-  if (create_attempt_directories(user, job_id, task_id) != 0) {
+  if (create_attempt_directories(user, good_local_dirs, job_id, task_id) != 0) {
     goto cleanup;
   }
   int task_file_source = open_file_as_task_tracker(script_name);
@@ -999,15 +1098,15 @@ static int delete_path(const char *full_path,
  * user: the user doing the delete
  * subdir: the subdir to delete
  */
-int delete_as_user(const char *user,
+int delete_as_user(const char *user, const char * good_local_dirs,
                    const char *subdir) {
   int ret = 0;
 
-  char** tt_roots = get_values(TT_SYS_DIR_KEY);
+  char** tt_roots = get_mapred_local_dirs(good_local_dirs);
   char** ptr;
   if (tt_roots == NULL || *tt_roots == NULL) {
-    fprintf(LOGFILE, "No %s defined in the configuration\n", TT_SYS_DIR_KEY);
-    return INVALID_CONFIG_FILE;
+    fprintf(LOGFILE, "Good mapred local directories could ot be obtained.\n");
+    return INVALID_TT_ROOT;
   }
 
   // do the delete
@@ -1027,17 +1126,38 @@ int delete_as_user(const char *user,
   return ret;
 }
 
-/**
- * delete a given log directory
+/*
+ * delete a given job log directory
+ * This function takes jobid and deletes the related logs.
  */
-int delete_log_directory(const char *subdir) {
-  char* log_subdir = get_job_log_directory(subdir);
+int delete_log_directory(const char *subdir, const char * good_local_dirs) {
+  char* job_log_dir = get_job_log_directory(subdir);
+  
   int ret = -1;
-  if (log_subdir != NULL) {
-    ret = delete_path(log_subdir, strchr(subdir, '/') == NULL);
+  if (job_log_dir == NULL) return ret;
+
+  //delete the job log directory in <hadoop.log.dir>/userlogs/jobid
+  delete_path(job_log_dir, true);
+
+  char **local_dir = get_mapred_local_dirs(good_local_dirs);
+
+  char **local_dir_ptr;
+  for(local_dir_ptr = local_dir; *local_dir_ptr != NULL; ++local_dir_ptr) {
+     char *mapred_local_log_dir = concatenate(USER_LOG_PATTERN, 
+				      "mapred local job log dir", 
+			      	      2, *local_dir_ptr, subdir);
+     if (mapred_local_log_dir != NULL) {
+        //delete the job log directory in <mapred.local.dir>/userlogs/jobid
+        delete_path(mapred_local_log_dir, true);
+	free(mapred_local_log_dir);
+     }
+     else
+        fprintf(LOGFILE, "Failed to delete mapred local log dir for jobid %s\n",
+            subdir);
   }
-  free(log_subdir);
-  return ret;
+  free(job_log_dir);
+  free_values(local_dir);
+  return 0;
 }
 
 /**

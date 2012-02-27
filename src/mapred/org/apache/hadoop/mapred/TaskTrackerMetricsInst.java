@@ -71,6 +71,7 @@ class TaskTrackerMetricsInst extends TaskTrackerInstrumentation
       metricsRecord.setMetric("mapTaskSlots", (short)tt.getMaxCurrentMapTasks());
       metricsRecord.setMetric("reduceTaskSlots", 
                                    (short)tt.getMaxCurrentReduceTasks());
+      metricsRecord.setMetric("failedDirs", tt.getNumDirFailures());
       metricsRecord.incrMetric("tasks_completed", numCompletedTasks);
       metricsRecord.incrMetric("tasks_failed_timeout", timedoutTasks);
       metricsRecord.incrMetric("tasks_failed_ping", tasksFailedPing);

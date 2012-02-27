@@ -177,8 +177,8 @@ public class TestDistributedCacheAlternateFileSystem {
             return UserGroupInformation.getCurrentUser();
           }
         });
-    Assert.assertTrue(curUGI.toString().equals(
-        PROXY_USER_NAME + " via " + REAL_USER_NAME));
+    Assert.assertEquals(curUGI.toString(),
+        PROXY_USER_NAME + " via " + REAL_USER_NAME + " (auth:SIMPLE) (auth:PROXY)");
 
 
     final Configuration conf = new Configuration();

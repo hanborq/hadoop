@@ -17,7 +17,7 @@ old_library='libhadoop.a'
 inherited_linker_flags=''
 
 # Libraries that this one depends upon.
-dependency_libs=' -L/opt/cloudera/toolchain/JDK6u20-64bit/jre/lib/amd64/server -L/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/cloudera/../build/snappy-1.0.3/build/usr/local/lib -ljvm -ldl'
+dependency_libs=' -L/opt/cloudera/toolchain/JDK6u20-64bit/jre/lib/amd64/server -L/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/cloudera/../build/snappy-1.0.3/build/usr/local/lib -ljvm -ldl'
 
 # Names of additional weak libraries provided by this library
 weak_library_names=''

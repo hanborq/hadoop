@@ -29,6 +29,8 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RawLocalFileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
+import org.apache.hadoop.mapred.TaskTracker.LocalStorage;
 import org.junit.Test;
 import org.junit.Before;
 import org.mockito.Mockito;
@@ -83,43 +85,38 @@ public class TestTaskTrackerDirectories {
   }
   
   @Test
-  public void testCreatesLogDir() throws Exception {
-    File dir = TaskLog.getUserLogDir();
-    FileUtil.fullyDelete(dir);
-    
-    setupTaskTracker(new Configuration());
-    
-    checkDir(dir.getAbsolutePath());
-  }
-  
-  /**
-   * If the log dir can't be created, the TT should fail to start since
-   * it will be unable to localize or run tasks.
-   */
-  @Test
-  public void testCantCreateLogDir() throws Exception {
-    File dir = TaskLog.getUserLogDir();
-    FileUtil.fullyDelete(dir);
-    assertTrue("Making file in place of log dir",
-        dir.createNewFile());
+  public void testCreatesLogDirs() throws Exception {
+    String[] dirs = new String[] {
+        TEST_DIR + "/local1",
+        TEST_DIR + "/local2"
+    };
 
-    try {
-      setupTaskTracker(new Configuration());
-      fail("Didn't throw!");
-    } catch (IOException ioe) {
-      System.err.println("Got expected exception");
-      ioe.printStackTrace(System.out);
-    }
+    Path logDir1 = new Path(dirs[0], TaskLog.USERLOGS_DIR_NAME);
+    Path logDir2 = new Path(dirs[1], TaskLog.USERLOGS_DIR_NAME);
+    FileUtil.fullyDelete(new File(logDir1.toString()));
+    FileUtil.fullyDelete(new File(logDir2.toString()));
+
+    Configuration conf = new Configuration();
+    conf.setStrings("mapred.local.dir", dirs);
+    setupTaskTracker(conf);
+
+    checkDir(logDir1.toString());
+    checkDir(logDir2.toString());
   }
   
   @Test
   public void testFixesLogDirPermissions() throws Exception {
-    File dir = TaskLog.getUserLogDir();
+    String[] dirs = new String[] {
+         TEST_DIR + "/local1"
+    };
+    File dir = new File(dirs[0]);
     FileUtil.fullyDelete(dir);
     dir.mkdirs();
     FileUtil.chmod(dir.getAbsolutePath(), "000");
-    
-    setupTaskTracker(new Configuration());
+
+    Configuration conf = new Configuration();
+    conf.setStrings("mapred.local.dir", dirs);
+    setupTaskTracker(conf);
     
     checkDir(dir.getAbsolutePath());
   }
@@ -131,13 +128,21 @@ public class TestTaskTrackerDirectories {
     TaskTracker tt = new TaskTracker();
     tt.setConf(ttConf);
     tt.setTaskController(Mockito.mock(TaskController.class));
+    LocalDirAllocator localDirAllocator = 
+      new LocalDirAllocator("mapred.local.dir");
+    tt.setLocalDirAllocator(localDirAllocator);
+    LocalFileSystem localFs = FileSystem.getLocal(conf);
+    LocalStorage localStorage = new LocalStorage(ttConf.getLocalDirs());
+    localStorage.checkDirs(localFs, true);
+    tt.setLocalStorage(localStorage);
+    tt.setLocalFileSystem(localFs);
     tt.initializeDirectories();
   }
 
   private void checkDir(String dir) throws IOException {
     FileSystem fs = RawLocalFileSystem.get(new Configuration());
     File f = new File(dir);
-    assertTrue(dir + "should exist", f.exists());
+    assertTrue(dir + " should exist", f.exists());
     FileStatus stat = fs.getFileStatus(new Path(dir));
     assertEquals(dir + " has correct permissions",
         0755, stat.getPermission().toShort());

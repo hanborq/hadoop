@@ -218,8 +218,24 @@ public class DistributedFileSystem extends FileSystem {
     statistics.incrementWriteOps(1);
     return new FSDataOutputStream
        (dfs.create(getPathName(f), permission,
-                   overwrite, replication, blockSize, progress, bufferSize),
+                   overwrite, true, replication, blockSize, progress, bufferSize),
         statistics);
+  }
+
+  /**
+   * Same as create(), except fails if parent directory doesn't already exist.
+   * @see #create(Path, FsPermission, boolean, int, short, long, Progressable)
+   */
+  @Override
+  public FSDataOutputStream createNonRecursive(Path f, FsPermission permission,
+      boolean overwrite,
+      int bufferSize, short replication, long blockSize, 
+      Progressable progress) throws IOException {
+    statistics.incrementWriteOps(1);
+    return new FSDataOutputStream
+        (dfs.create(getPathName(f), permission, 
+                    overwrite, false, replication, blockSize, progress, bufferSize), 
+         statistics);
   }
 
   public boolean setReplication(Path src, 

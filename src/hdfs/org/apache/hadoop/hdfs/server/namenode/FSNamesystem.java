@@ -65,6 +65,12 @@ import org.apache.hadoop.fs.permission.*;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.Server;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
+import org.apache.hadoop.util.Daemon;
+import org.apache.hadoop.util.HostsFileReader;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.util.VersionInfo;
 import org.mortbay.util.ajax.JSON;
 
 import java.io.BufferedWriter;
@@ -1111,6 +1117,24 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
                             text + " is less than the required minimum " + minReplication);
   }
 
+  /*
+   * Verify that parent dir exists
+   */
+  private void verifyParentDir(String src) throws FileAlreadyExistsException,
+      FileNotFoundException {
+    Path parent = new Path(src).getParent();
+    if (parent != null) {
+      INode[] pathINodes = dir.getExistingPathINodes(parent.toString());
+      if (pathINodes[pathINodes.length - 1] == null) {
+        throw new FileNotFoundException("Parent directory doesn't exist: "
+            + parent.toString());
+      } else if (!pathINodes[pathINodes.length - 1].isDirectory()) {
+        throw new FileAlreadyExistsException("Parent path is not a directory: "
+            + parent.toString());
+      }
+    }
+  }
+
   /**
    * Create a new file entry in the namespace.
    * 
@@ -1121,10 +1145,10 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
    */
   void startFile(String src, PermissionStatus permissions,
                  String holder, String clientMachine,
-                 boolean overwrite, short replication, long blockSize
+                 boolean overwrite, boolean createParent, short replication, long blockSize
                 ) throws IOException {
     startFileInternal(src, permissions, holder, clientMachine, overwrite, false,
-                      replication, blockSize);
+                      createParent, replication, blockSize);
     getEditLog().logSync();
     if (auditLog.isInfoEnabled() && isExternalInvocation()) {
       final HdfsFileStatus stat = dir.getFileInfo(src);
@@ -1140,6 +1164,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
                                               String clientMachine, 
                                               boolean overwrite,
                                               boolean append,
+                                              boolean createParent,
                                               short replication,
                                               long blockSize
                                               ) throws IOException {
@@ -1147,6 +1172,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
       NameNode.stateChangeLog.debug("DIR* NameSystem.startFile: src=" + src
           + ", holder=" + holder
           + ", clientMachine=" + clientMachine
+          + ", createParent=" + createParent
           + ", replication=" + replication
           + ", overwrite=" + overwrite
           + ", append=" + append);
@@ -1171,6 +1197,10 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
       else {
         checkAncestorAccess(src, FsAction.WRITE);
       }
+    }
+
+    if (!createParent) {
+      verifyParentDir(src);
     }
 
     try {
@@ -1355,7 +1385,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
                             " Please refer to dfs.support.append configuration parameter.");
     }
     startFileInternal(src, null, holder, clientMachine, false, true, 
-                      (short)maxReplication, (long)0);
+                      false, (short)maxReplication, (long)0);
     getEditLog().logSync();
 
     //
@@ -2186,8 +2216,7 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
 
     if (deleteblock) {
       pendingFile.removeBlock(lastblock);
-    }
-    else {
+    } else {
       // update last block, construct newblockinfo and add it to the blocks map
       lastblock.set(lastblock.getBlockId(), newlength, newgenerationstamp);
       final BlockInfo newblockinfo = blocksMap.addINode(lastblock, pendingFile);
@@ -5343,7 +5372,13 @@ public class FSNamesystem implements FSConstants, FSNamesystemMBean,
     }
     BlockInfo storedBlock = blocksMap.getStoredBlock(block);
     if (storedBlock == null) {
-      String msg = block + " is already commited, storedBlock == null.";
+      BlockInfo match =
+        blocksMap.getStoredBlock(block.getWithWildcardGS());
+      String msg = (match == null)
+        ? block + " is missing"
+        : block + " has out of date GS " + block.getGenerationStamp() +
+                  " found " + match.getGenerationStamp() +
+                  ", may already be committed";
       LOG.info(msg);
       throw new IOException(msg);
     }

@@ -35,6 +35,7 @@ import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.mapred.TaskTracker.LocalStorage;
 import org.apache.hadoop.util.PlatformName;
 import org.apache.hadoop.util.ProcessTree.Signal;
 import org.apache.hadoop.util.StringUtils;
@@ -50,8 +51,10 @@ import org.apache.hadoop.util.Shell.ShellCommandExecutor;
  * JVM and killing it when needed, and also initializing and
  * finalizing the task environment. 
  * <p> The setuid executable is launched using the command line:</p>
- * <p>task-controller user-name command command-args, where</p>
+ * <p>task-controller user-name good-local-dirs command command-args,
+ * where</p>
  * <p>user-name is the name of the owner who submits the job</p>
+ * <p>good-local-dirs is comma separated list of good mapred local dirs</p>
  * <p>command is one of the cardinal value of the 
  * {@link LinuxTaskController.TaskControllerCommands} enumeration</p>
  * <p>command-args depends on the command being launched.</p>
@@ -125,11 +128,13 @@ class LinuxTaskController extends TaskController {
   }
 
   @Override
-  public void setup(LocalDirAllocator allocator) throws IOException {
+  public void setup(LocalDirAllocator allocator, LocalStorage localStorage)
+      throws IOException {
 
-    // Check the permissions of the task-controller binary by running it plainly.
-    // If permissions are correct, it returns an error code 1, else it returns
-    // 24 or something else if some other bugs are also present.
+    // Check the permissions of the task-controller binary by running
+    // it plainly.  If permissions are correct, it returns an error
+    // code 1, else it returns 24 or something else if some other bugs
+    // are also present.
     String[] taskControllerCmd =
         new String[] { taskControllerExe };
     ShellCommandExecutor shExec = new ShellCommandExecutor(taskControllerCmd);
@@ -145,6 +150,7 @@ class LinuxTaskController extends TaskController {
       }
     }
     this.allocator = allocator;
+    this.localStorage = localStorage;
   }
 
   @Override
@@ -154,10 +160,13 @@ class LinuxTaskController extends TaskController {
                             ) throws IOException {
     List<String> command = new ArrayList<String>(
       Arrays.asList(taskControllerExe, 
-                    user, 
+                    user,
+                    localStorage.getDirsString(),
                     Integer.toString(Commands.INITIALIZE_JOB.getValue()),
                     jobid,
                     credentials.toUri().getPath().toString()));
+//TODO resolve this conflict later.
+/*jobConf.toUri().getPath().toString()));*/
     File jvm =                                  // use same jvm as parent
       new File(new File(System.getProperty("java.home"), "bin"), "java");
     command.add(jvm.toString());
@@ -217,6 +226,7 @@ class LinuxTaskController extends TaskController {
       String[] command = 
         new String[]{taskControllerExe, 
           user,
+          localStorage.getDirsString(),
           Integer.toString(Commands.LAUNCH_TASK_JVM.getValue()),
           jobId,
           attemptId,
@@ -257,6 +267,7 @@ class LinuxTaskController extends TaskController {
     String[] command = 
       new String[]{taskControllerExe, 
                    user,
+                   localStorage.getDirsString(),
                    Integer.toString(Commands.DELETE_AS_USER.getValue()),
                    subDir};
     ShellCommandExecutor shExec = new ShellCommandExecutor(command);
@@ -266,12 +277,18 @@ class LinuxTaskController extends TaskController {
     shExec.execute();
   }
 
-  
+  @Override
+  public void createLogDir(TaskAttemptID taskID,
+                           boolean isCleanup) throws IOException {
+    // Log dirs are created during attempt dir creation when running the task
+  }
+
   @Override
   public void deleteLogAsUser(String user, String subDir) throws IOException {
     String[] command = 
       new String[]{taskControllerExe, 
                    user,
+                   localStorage.getDirsString(),
                    Integer.toString(Commands.DELETE_LOG_AS_USER.getValue()),
                    subDir};
     ShellCommandExecutor shExec = new ShellCommandExecutor(command);
@@ -287,6 +304,7 @@ class LinuxTaskController extends TaskController {
     String[] command = 
       new String[]{taskControllerExe, 
                    user,
+                   localStorage.getDirsString(),
                    Integer.toString(Commands.SIGNAL_TASK.getValue()),
                    Integer.toString(taskPid),
                    Integer.toString(signal.getValue())};
@@ -313,9 +331,10 @@ class LinuxTaskController extends TaskController {
     Task firstTask = allAttempts.get(0);
     String taskid = firstTask.getTaskID().toString();
     
-    LocalDirAllocator ldirAlloc = new LocalDirAllocator("mapred.local.dir");
+    LocalDirAllocator ldirAlloc =
+        new LocalDirAllocator(JobConf.MAPRED_LOCAL_DIR_PROPERTY);
     String taskRanFile = TaskTracker.TT_LOG_TMP_DIR + Path.SEPARATOR + taskid;
-    Configuration conf = new Configuration();
+    Configuration conf = getConf();
     
     //write the serialized task information to a file to pass to the truncater
     Path taskRanFilePath = 
@@ -344,13 +363,14 @@ class LinuxTaskController extends TaskController {
     // main of TaskLogsTruncater
     command.add(TaskLogsTruncater.class.getName()); 
     command.add(taskRanFilePath.toString());
-    String[] taskControllerCmd = new String[3 + command.size()];
+    String[] taskControllerCmd = new String[4 + command.size()];
     taskControllerCmd[0] = taskControllerExe;
     taskControllerCmd[1] = user;
-    taskControllerCmd[2] = Integer.toString(
+    taskControllerCmd[2] = localStorage.getDirsString();
+    taskControllerCmd[3] = Integer.toString(
         Commands.RUN_COMMAND_AS_USER.getValue());
 
-    int i = 3;
+    int i = 4;
     for (String cmdArg : command) {
       taskControllerCmd[i++] = cmdArg;
     }

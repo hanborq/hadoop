@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.BlockReader;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.hdfs.DFSTestUtil;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
@@ -98,7 +99,7 @@ public class TestDataNodeVolumeFailure {
    * failure if the configuration parameter allows this.
    */
   @Test
-  public void testVolumeFailure() throws IOException {
+  public void testVolumeFailure() throws IOException, InterruptedException {
     FileSystem fs = cluster.getFileSystem();
     dataDir = new File(cluster.getDataDirectory());
     System.out.println("Data dir: is " +  dataDir.getPath());
@@ -254,7 +255,6 @@ public class TestDataNodeVolumeFailure {
     throws IOException {
     InetSocketAddress targetAddr = null;
     Socket s = null;
-    DFSClient.BlockReader blockReader = null; 
     Block block = lblock.getBlock(); 
    
     targetAddr = NetUtils.createSocketAddr(datanode.getName());
@@ -263,8 +263,8 @@ public class TestDataNodeVolumeFailure {
     s.connect(targetAddr, HdfsConstants.READ_TIMEOUT);
     s.setSoTimeout(HdfsConstants.READ_TIMEOUT);
 
-    blockReader = 
-      DFSClient.BlockReader.newBlockReader(s, targetAddr.toString() + ":" + 
+    BlockReader blockReader = 
+      DFSClient.RemoteBlockReader.newBlockReader(s, targetAddr.toString() + ":" + 
           block.getBlockId(), block.getBlockId(), lblock.getBlockToken(),
           block.getGenerationStamp(), 0, -1, 4096);
 

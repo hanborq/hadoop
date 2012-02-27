@@ -59,8 +59,8 @@ class FSDirectory implements FSConstants, Closeable {
   /** Access an existing dfs name directory. */
   FSDirectory(FSNamesystem ns, Configuration conf) {
     this(new FSImage(), ns, conf);
-    if(conf.getBoolean("dfs.name.dir.restore", false)) {
-      NameNode.LOG.info("set FSImage.restoreFailedStorage");
+    if (conf.getBoolean("dfs.name.dir.restore", false)) {
+      NameNode.LOG.info("Enabling dfs.name.dir storage restoration");
       fsImage.setRestoreFailedStorage(true);
     }
     fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),

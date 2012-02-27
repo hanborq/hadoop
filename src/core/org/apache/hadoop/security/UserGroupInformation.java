@@ -135,18 +135,30 @@ public class UserGroupInformation {
 
     @Override
     public boolean commit() throws LoginException {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("hadoop login commit");
+      }
       // if we already have a user, we are done.
       if (!subject.getPrincipals(User.class).isEmpty()) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("using existing subject:"+subject.getPrincipals());
+        }
         return true;
       }
       Principal user = null;
       // if we are using kerberos, try it out
       if (useKerberos) {
         user = getCanonicalUser(KerberosPrincipal.class);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("using kerberos user:"+user);
+        }
       }
       // if we don't have a kerberos user, use the OS user
       if (user == null) {
         user = getCanonicalUser(OS_PRINCIPAL_CLASS);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("using local user:"+user);
+        }
       }
       // if we found the user, add our principal
       if (user != null) {
@@ -165,11 +177,17 @@ public class UserGroupInformation {
 
     @Override
     public boolean login() throws LoginException {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("hadoop login");
+      }
       return true;
     }
 
     @Override
     public boolean logout() throws LoginException {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("hadoop logout");
+      }
       return true;
     }
   }
@@ -198,7 +216,7 @@ public class UserGroupInformation {
    */
   private static synchronized void ensureInitialized() {
     if (!isInitialized) {
-      initialize(new Configuration());
+      initialize(new Configuration(), KerberosName.hasRulesBeenSet());
     }
   }
 
@@ -206,7 +224,8 @@ public class UserGroupInformation {
    * Set the configuration values for UGI.
    * @param conf the configuration to use
    */
-  private static synchronized void initialize(Configuration conf) {
+  private static synchronized void initialize(Configuration conf, boolean skipRulesSetting) {
+
     String value = conf.get(HADOOP_SECURITY_AUTHENTICATION);
     if (value == null || "simple".equals(value)) {
       useKerberos = false;
@@ -249,7 +268,9 @@ public class UserGroupInformation {
 
     // give the configuration on how to translate Kerberos names
     try {
-      KerberosName.setConfiguration(conf);
+      if (!skipRulesSetting) {
+        KerberosName.setConfiguration(conf);
+      }
     } catch (IOException ioe) {
       throw new RuntimeException("Problem with Kerberos auth_to_local name " +
                                  "configuration", ioe);
@@ -263,7 +284,7 @@ public class UserGroupInformation {
    * @param conf the configuration to use
    */
   public static void setConfiguration(Configuration conf) {
-    initialize(conf);
+    initialize(conf, false);
   }
   
   /**
@@ -433,6 +454,11 @@ public class UserGroupInformation {
     }
   }
   
+  private static LoginContext
+  newLoginContext(String appName, Subject subject) throws LoginException {
+    return new LoginContext(appName, subject, null, new HadoopConfiguration(null));
+  }
+  
   private LoginContext getLogin() {
     return user.getLogin();
   }
@@ -488,9 +514,9 @@ public class UserGroupInformation {
         Subject subject = new Subject();
         LoginContext login;
         if (isSecurityEnabled()) {
-          login = new LoginContext(HadoopConfiguration.USER_KERBEROS_CONFIG_NAME, subject);
+          login = newLoginContext(HadoopConfiguration.USER_KERBEROS_CONFIG_NAME, subject);
         } else {
-          login = new LoginContext(HadoopConfiguration.SIMPLE_CONFIG_NAME, subject);
+          login = newLoginContext(HadoopConfiguration.SIMPLE_CONFIG_NAME, subject);
         }
         login.login();
         loginUser = new UserGroupInformation(subject);
@@ -512,6 +538,9 @@ public class UserGroupInformation {
         loginUser.spawnAutoRenewalThreadForUserCreds();
       } catch (LoginException le) {
         throw new IOException("failure to login", le);
+      }
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("UGI loginUser:"+loginUser);
       }
     }
     return loginUser;
@@ -624,7 +653,7 @@ public class UserGroupInformation {
     long start = 0;
     try {
       login = 
-        new LoginContext(HadoopConfiguration.KEYTAB_KERBEROS_CONFIG_NAME, subject);
+        newLoginContext(HadoopConfiguration.KEYTAB_KERBEROS_CONFIG_NAME, subject);
       start = System.currentTimeMillis();
       login.login();
       metrics.loginSuccess.inc(System.currentTimeMillis() - start);
@@ -670,7 +699,7 @@ public class UserGroupInformation {
       //login and also update the subject field of this instance to 
       //have the new credentials (pass it to the LoginContext constructor)
       login = 
-        new LoginContext(HadoopConfiguration.USER_KERBEROS_CONFIG_NAME, 
+        newLoginContext(HadoopConfiguration.USER_KERBEROS_CONFIG_NAME, 
             getSubject());
       LOG.info("Initiating re-login for " + getUserName());
       login.login();
@@ -707,7 +736,7 @@ public class UserGroupInformation {
       Subject subject = new Subject();
       
       LoginContext login = 
-        new LoginContext(HadoopConfiguration.KEYTAB_KERBEROS_CONFIG_NAME, subject); 
+        newLoginContext(HadoopConfiguration.KEYTAB_KERBEROS_CONFIG_NAME, subject); 
        
       start = System.currentTimeMillis();
       login.login();
@@ -781,7 +810,7 @@ public class UserGroupInformation {
         //login and also update the subject field of this instance to 
         //have the new credentials (pass it to the LoginContext constructor)
         login = 
-          new LoginContext(HadoopConfiguration.KEYTAB_KERBEROS_CONFIG_NAME, 
+          newLoginContext(HadoopConfiguration.KEYTAB_KERBEROS_CONFIG_NAME, 
                            getSubject());
         LOG.info("Initiating re-login for " + keytabPrincipal);
         start = System.currentTimeMillis();
@@ -1044,11 +1073,10 @@ public class UserGroupInformation {
    */
   @Override
   public String toString() {
-    if (getRealUser() != null) {
-      return getUserName() + " via " +  getRealUser().toString();
-    } else {
-      return getUserName();
-    }
+    String me = (getRealUser() != null)
+      ? getUserName() + " via " +  getRealUser().toString()
+      : getUserName();
+    return me + " (auth:"+getAuthenticationMethod()+")";
   }
 
   /**
@@ -1107,6 +1135,7 @@ public class UserGroupInformation {
    * @return the value from the run method
    */
   public <T> T doAs(PrivilegedAction<T> action) {
+    logPriviledgedAction(subject, action);
     return Subject.doAs(subject, action);
   }
   
@@ -1124,9 +1153,11 @@ public class UserGroupInformation {
   public <T> T doAs(PrivilegedExceptionAction<T> action
                     ) throws IOException, InterruptedException {
     try {
+      logPriviledgedAction(subject, action);
       return Subject.doAs(subject, action);
     } catch (PrivilegedActionException pae) {
       Throwable cause = pae.getCause();
+      LOG.error("PriviledgedActionException as:"+this+" cause:"+cause);
       if (cause instanceof IOException) {
         throw (IOException) cause;
       } else if (cause instanceof Error) {
@@ -1138,6 +1169,14 @@ public class UserGroupInformation {
       } else {
         throw new UndeclaredThrowableException(pae,"Unknown exception in doAs");
       }
+    }
+  }
+
+  private void logPriviledgedAction(Subject subject, Object action) {
+    if (LOG.isDebugEnabled()) {
+      // would be nice if action included a descriptive toString()
+      String where = new Throwable().getStackTrace()[2].toString();
+      LOG.debug("PriviledgedAction as:"+this+" from:"+where);
     }
   }
 

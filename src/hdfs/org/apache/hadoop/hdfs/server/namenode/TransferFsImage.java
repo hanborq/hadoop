@@ -240,4 +240,13 @@ class TransferFsImage implements FSConstants {
     }
     return digester == null ? null : new MD5Hash(digester.digest());
   }
+
+  /**
+   * @deprecated use {@link getFileClient(String, String, File[], boolean)} instead.
+   */
+  @Deprecated
+  static void getFileClient(String fsName, String id, File[] localPath)
+      throws IOException {
+    getFileClient(fsName, id, localPath, false);
+  }
 }

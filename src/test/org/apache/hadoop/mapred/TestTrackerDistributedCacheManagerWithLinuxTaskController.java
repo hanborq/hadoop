@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.ClusterWithLinuxTaskController.MyLinuxTaskController;
+import org.apache.hadoop.mapred.TaskTracker.LocalStorage;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.filecache.TestTrackerDistributedCacheManager;
 
@@ -65,7 +66,8 @@ public class TestTrackerDistributedCacheManagerWithLinuxTaskController extends
     String execPath = path + "/task-controller";
     ((MyLinuxTaskController)taskController).setTaskControllerExe(execPath);
     taskController.setConf(conf);
-    taskController.setup(new LocalDirAllocator("mapred.local.dir"));
+    UtilsForTests.setupTC(taskController, localDirAllocator,
+        conf.getStrings(JobConf.MAPRED_LOCAL_DIR_PROPERTY));
   }
 
   @Override

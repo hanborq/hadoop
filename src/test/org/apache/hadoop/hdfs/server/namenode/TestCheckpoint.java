@@ -25,6 +25,10 @@ import java.util.List;
 import java.util.Iterator;
 import java.util.Random;
 
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.spy;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
@@ -188,6 +192,13 @@ public class TestCheckpoint extends TestCase {
       assertTrue("Couldn't remove directory " + filePath1.getAbsolutePath(),
                  FileUtil.fullyDelete(filePath1));
     }
+
+    // Stub out fatalExit as we'll trigger it below, incrementCheckpointTime
+    // will notice there are no edit streams.
+    FSEditLog spyLog = spy(nnStorage.getEditLog());
+    doNothing().when(spyLog).fatalExit(anyString());
+    nnStorage.setEditLog(spyLog);
+
     // Just call setCheckpointTimeInStorage using any random number
     nnStorage.incrementCheckpointTime();
     List<StorageDirectory> listRsd = nnStorage.getRemovedStorageDirs();

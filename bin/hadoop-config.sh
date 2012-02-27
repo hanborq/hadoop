@@ -28,7 +28,6 @@ this="$bin/$script"
 # the root of the Hadoop installation
 if [ -z "$HADOOP_HOME" ]; then
   export HADOOP_HOME=`dirname "$this"`/..
-  export HADOOP_HOME=`cd "$HADOOP_HOME"; pwd`
 fi
 
 # double check that our HADOOP_HOME looks reasonable.

@@ -150,14 +150,10 @@ public class TestInjectionForSimulatedStorage extends TestCase {
       
       waitForBlockReplication(testFile, dfsClient.namenode, numDataNodes, 20);
 
-      
       Block[][] blocksList = cluster.getAllBlockReports();
-                    
-      
+
       cluster.shutdown();
       cluster = null;
-      
-
       
       /* Start the MiniDFSCluster with more datanodes since once a writeBlock
        * to a datanode node fails, same block can not be written to it
@@ -189,7 +185,8 @@ public class TestInjectionForSimulatedStorage extends TestCase {
                                   conf);
       
       waitForBlockReplication(testFile, dfsClient.namenode, numDataNodes, -1);
-      
+    } catch (InterruptedException ie) {
+      // Ignore
     } finally {
       if (cluster != null) {
         cluster.shutdown();

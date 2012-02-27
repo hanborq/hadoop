@@ -335,12 +335,17 @@ public class KerberosName {
 
   /**
    * Set the static configuration to get the rules.
+   * <p/>
+   * IMPORTANT: This method does a NOP if the rules have been set already.
+   * If there is a need to reset the rules, the {@link KerberosName#setRules(String)}
+   * method should be invoked directly.
+   *
    * @param conf the new configuration
    * @throws IOException
    */
   public static void setConfiguration(Configuration conf) throws IOException {
     String ruleString = conf.get("hadoop.security.auth_to_local", "DEFAULT");
-    rules = parseRules(ruleString);
+    setRules(ruleString);
   }
   
   /**
@@ -392,6 +397,15 @@ public class KerberosName {
       }
     }
     throw new NoMatchingRule("No rules applied to " + toString());
+  }
+
+  /**
+   * Indicates if the name rules have been set.
+   * 
+   * @return if the name rules have been set.
+   */
+  public static boolean hasRulesBeenSet() {
+    return rules != null;
   }
 
   public static void printRules() throws IOException {

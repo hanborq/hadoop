@@ -17,16 +17,12 @@
  */
 package org.apache.hadoop.hdfs.server.namenode;
 
-
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Random;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -34,23 +30,17 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.server.common.Storage;
-import org.apache.hadoop.hdfs.server.common.Storage.StorageDirectory;
-import org.apache.hadoop.hdfs.server.namenode.FSImage.NameNodeDirType;
 import org.apache.hadoop.hdfs.server.namenode.FSImage.NameNodeFile;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-
 /**
- * Startup and checkpoint tests
- * 
+ * Test restoring failed storage directories on checkpoint.
  */
 public class TestStorageRestore {
   public static final String NAME_NODE_HOST = "localhost:";
   public static final String NAME_NODE_HTTP_HOST = "0.0.0.0:";
-  private static final Log LOG =
-    LogFactory.getLog(TestStorageRestore.class.getName());
   private Configuration config;
   private File hdfsDir=null;
   static final long seed = 0xAAAAEEFL;
@@ -60,7 +50,7 @@ public class TestStorageRestore {
   private MiniDFSCluster cluster;
 
   private void writeFile(FileSystem fileSys, Path name, int repl)
-  throws IOException {
+      throws IOException {
     FSDataOutputStream stm = fileSys.create(name, true,
         fileSys.getConf().getInt("io.file.buffer.size", 4096),
         (short)repl, (long)blockSize);
@@ -77,8 +67,8 @@ public class TestStorageRestore {
     String baseDir = System.getProperty("test.build.data", "/tmp");
     
     hdfsDir = new File(baseDir, "dfs");
-    if ( hdfsDir.exists() && !FileUtil.fullyDelete(hdfsDir) ) {
-      throw new IOException("Could not delete hdfs directory '" + hdfsDir + "'");
+    if (hdfsDir.exists()) {
+      FileUtil.fullyDelete(hdfsDir);
     }
     
     hdfsDir.mkdir();
@@ -86,95 +76,57 @@ public class TestStorageRestore {
     path2 = new File(hdfsDir, "name2");
     path3 = new File(hdfsDir, "name3");
     
-    path1.mkdir(); path2.mkdir(); path3.mkdir();
-    if(!path2.exists() ||  !path3.exists() || !path1.exists()) {
-      throw new IOException("Couldn't create dfs.name dirs");
-    }
-    
-    String dfs_name_dir = new String(path1.getPath() + "," + path2.getPath());
-    System.out.println("configuring hdfsdir is " + hdfsDir.getAbsolutePath() + 
-        "; dfs_name_dir = "+ dfs_name_dir + ";dfs_name_edits_dir(only)=" + path3.getPath());
-    
-    config.set("dfs.name.dir", dfs_name_dir);
-    config.set("dfs.name.edits.dir", dfs_name_dir + "," + path3.getPath());
+    path1.mkdir();
+    path2.mkdir();
+    path3.mkdir();
 
+    String nameDir = new String(path1.getPath() + "," + path2.getPath());
+    config.set("dfs.name.dir", nameDir);
+    config.set("dfs.name.edits.dir", nameDir + "," + path3.getPath());
     config.set("fs.checkpoint.dir",new File(hdfsDir, "secondary").getPath());
  
     FileSystem.setDefaultUri(config, "hdfs://"+NAME_NODE_HOST + "0");
-    
     config.set("dfs.secondary.http.address", "0.0.0.0:0");
-    
-    // set the restore feature on
     config.setBoolean("dfs.name.dir.restore", true);
   }
 
-  /**
-   * clean up
-   */
   @After
   public void cleanUpNameDirs() throws Exception {
-    if (hdfsDir.exists() && !FileUtil.fullyDelete(hdfsDir) ) {
-      throw new IOException("Could not delete hdfs directory in tearDown '" + hdfsDir + "'");
-    } 
-  }
-  
-  /**
-   * invalidate storage by removing current directories
-   */
-  public void invalidateStorage(FSImage fi) throws IOException {
-    fi.getEditLog().processIOError(2); //name3
-    fi.getEditLog().processIOError(1); // name2
-  }
-  
-  /**
-   * test
-   */
-  public void printStorages(FSImage fs) {
-    LOG.info("current storages and corresponding sizes:");
-    for(Iterator<StorageDirectory> it = fs.dirIterator(); it.hasNext(); ) {
-      StorageDirectory sd = it.next();
-      
-      if(sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
-        File imf = FSImage.getImageFile(sd, NameNodeFile.IMAGE);
-        LOG.info("  image file " + imf.getAbsolutePath() + "; len = " + imf.length());  
-      }
-      if(sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
-        File edf = FSImage.getImageFile(sd, NameNodeFile.EDITS);
-        LOG.info("  edits file " + edf.getAbsolutePath() + "; len = " + edf.length()); 
-      }
+    if (hdfsDir.exists()) {
+      FileUtil.fullyDelete(hdfsDir);
     }
   }
   
   /**
-   *  check if files exist/not exist
+   * Remove edits and storage directories.
    */
-  public void checkFiles(boolean valid) {
-    //look at the valid storage
-    File fsImg1 = new File(path1, Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.IMAGE.getName());
-    File fsImg2 = new File(path2, Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.IMAGE.getName());
-    File fsImg3 = new File(path3, Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.IMAGE.getName());
+  public void invalidateStorage(FSImage fi) throws IOException {
+    fi.getEditLog().removeEditsAndStorageDir(2); // name3
+    fi.getEditLog().removeEditsAndStorageDir(1); // name2
+  }
+  
+  /**
+   * Check the lengths of the image and edits files.
+   */
+  public void checkFiles(boolean expectValid) {
+    final String imgName = 
+      Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.IMAGE.getName();
+    final String editsName = 
+      Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.EDITS.getName();
 
-    File fsEdits1 = new File(path1, Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.EDITS.getName());
-    File fsEdits2 = new File(path2, Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.EDITS.getName());
-    File fsEdits3 = new File(path3, Storage.STORAGE_DIR_CURRENT + "/" + NameNodeFile.EDITS.getName());
+    File fsImg1 = new File(path1, imgName);
+    File fsImg2 = new File(path2, imgName);
+    File fsImg3 = new File(path3, imgName);
+    File fsEdits1 = new File(path1, editsName);
+    File fsEdits2 = new File(path2, editsName);
+    File fsEdits3 = new File(path3, editsName);
 
-    this.printStorages(cluster.getNameNode().getFSImage());
-    
-    LOG.info("++++ image files = "+fsImg1.getAbsolutePath() + "," + fsImg2.getAbsolutePath() + ","+ fsImg3.getAbsolutePath());
-    LOG.info("++++ edits files = "+fsEdits1.getAbsolutePath() + "," + fsEdits2.getAbsolutePath() + ","+ fsEdits3.getAbsolutePath());
-    LOG.info("checkFiles compares lengths: img1=" + fsImg1.length()  + ",img2=" + fsImg2.length()  + ",img3=" + fsImg3.length());
-    LOG.info("checkFiles compares lengths: edits1=" + fsEdits1.length()  + ",edits2=" + fsEdits2.length()  + ",edits3=" + fsEdits3.length());
-    
-    if(valid) {
-      // should be the same
+    if (expectValid) {
       assertTrue(fsImg1.length() == fsImg2.length());
-      assertTrue(0 == fsImg3.length()); //shouldn't be created
+      assertTrue(0 == fsImg3.length()); // Shouldn't be created
       assertTrue(fsEdits1.length() == fsEdits2.length());
       assertTrue(fsEdits1.length() == fsEdits3.length());
     } else {
-      // should be different
-      //assertTrue(fsImg1.length() != fsImg2.length());
-      //assertTrue(fsImg1.length() != fsImg3.length());
       assertTrue(fsEdits1.length() != fsEdits2.length());
       assertTrue(fsEdits1.length() != fsEdits3.length());
     }
@@ -195,37 +147,26 @@ public class TestStorageRestore {
   @Test
   public void testStorageRestore() throws Exception {
     int numDatanodes = 2;
-    //Collection<String> dirs = config.getStringCollection("dfs.name.dir");
-    cluster = new MiniDFSCluster(0, config, numDatanodes, true, false, true,  null, null, null, null);
+    cluster = new MiniDFSCluster(0, config, numDatanodes, true, 
+        false, true,  null, null, null, null);
     cluster.waitActive();
     
     SecondaryNameNode secondary = new SecondaryNameNode(config);
-    System.out.println("****testStorageRestore: Cluster and SNN started");
-    printStorages(cluster.getNameNode().getFSImage());
     
     FileSystem fs = cluster.getFileSystem();
     Path path = new Path("/", "test");
     writeFile(fs, path, 2);
     
-    System.out.println("****testStorageRestore: file test written, invalidating storage...");
-  
     invalidateStorage(cluster.getNameNode().getFSImage());
-    //secondary.doCheckpoint(); // this will cause storages to be removed.
-    printStorages(cluster.getNameNode().getFSImage());
-    System.out.println("****testStorageRestore: storage invalidated + doCheckpoint");
 
     path = new Path("/", "test1");
     writeFile(fs, path, 2);
-    System.out.println("****testStorageRestore: file test1 written");
     
-    checkFiles(false); // SHOULD BE FALSE
+    checkFiles(false);
     
-    System.out.println("****testStorageRestore: checkfiles(false) run");
-    
-    secondary.doCheckpoint();  ///should enable storage..
+    secondary.doCheckpoint();
     
     checkFiles(true);
-    System.out.println("****testStorageRestore: second Checkpoint done and checkFiles(true) run");
     secondary.shutdown();
     cluster.shutdown();
   }
@@ -241,38 +182,30 @@ public class TestStorageRestore {
   public void testCheckpointWithRestoredDirectory() throws IOException {
     SecondaryNameNode secondary = null;
     try {
-      cluster = new MiniDFSCluster(0, config, 1, true, false, true,  null, null,
-          null, null);
+      cluster = new MiniDFSCluster(0, config, 1, true, false, true,
+          null, null, null, null);
       cluster.waitActive();
       
       secondary = new SecondaryNameNode(config);
       FSImage fsImage = cluster.getNameNode().getFSImage();
-      printStorages(fsImage);
-      
+
       FileSystem fs = cluster.getFileSystem();
       Path path1 = new Path("/", "test");
       writeFile(fs, path1, 2);
-      
-      printStorages(fsImage);
   
       // Take name3 offline
-      System.out.println("causing IO error on " + fsImage.getStorageDir(2).getRoot());
-      fsImage.getEditLog().processIOError(2);
+      fsImage.getEditLog().removeEditsAndStorageDir(2);
       
       // Simulate a 2NN beginning a checkpoint, but not finishing. This will
       // cause name3 to be restored.
       cluster.getNameNode().rollEditLog();
       
-      printStorages(fsImage);
-      
       // Now another 2NN comes along to do a full checkpoint.
       secondary.doCheckpoint();
       
-      printStorages(fsImage);
-      
       // The created file should still exist in the in-memory FS state after the
       // checkpoint.
-      assertTrue("path exists before restart", fs.exists(path1));
+      assertTrue("File missing after checkpoint", fs.exists(path1));
       
       secondary.shutdown();
       

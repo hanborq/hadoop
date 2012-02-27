@@ -31,6 +31,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.mapred.TaskTracker.LocalStorage;
 import org.apache.hadoop.util.ProcessTree.Signal;
 
 /**
@@ -57,6 +58,7 @@ public abstract class TaskController implements Configurable {
   protected static final String COMMAND_FILE = "taskjvm.sh";
   
   protected LocalDirAllocator allocator;
+  protected LocalStorage localStorage;
 
   final public static FsPermission TASK_LAUNCH_SCRIPT_PERMISSION =
   FsPermission.createImmutable((short) 0700); // rwx--------
@@ -65,6 +67,10 @@ public abstract class TaskController implements Configurable {
     return conf;
   }
 
+  public String[] getLocalDirs() {
+    return localStorage.getDirs();
+  }
+  
   public void setConf(Configuration conf) {
     this.conf = conf;
   }
@@ -72,9 +78,10 @@ public abstract class TaskController implements Configurable {
   /**
    * Does initialization and setup.
    * @param allocator the local dir allocator to use
-   * // TODO(todd) - make sure implementation checks TaskLog directory writability
+   * @param localStorage TaskTracker's LocalStorage object
    */
-  public abstract void setup(LocalDirAllocator allocator) throws IOException;
+  public abstract void setup(LocalDirAllocator allocator,
+      LocalStorage localStorage) throws IOException;
 
   /**
    * Create all of the directories necessary for the job to start and download
@@ -137,7 +144,15 @@ public abstract class TaskController implements Configurable {
    */
   public abstract void deleteAsUser(String user, 
                                     String subDir) throws IOException;
-  
+
+  /**
+   * Creates task log dir
+   * @param taskID ID of the task
+   * @param isCleanup If the task is cleanup task or not
+   * @throws IOException
+   */
+  public abstract void createLogDir(TaskAttemptID taskID,
+                                    boolean isCleanup) throws IOException;
 
   /**
    * Delete the user's files under the userlogs directory.

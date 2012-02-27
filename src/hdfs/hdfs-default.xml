@@ -287,6 +287,14 @@ creations/deletions), or "all".</description>
 </property>
 
 <property>
+  <name>dfs.datanode.directoryscan.threads</name>
+  <value>1</value>
+  <description>Number of threads to use when scanning volumes to
+  generate block reports. A value greater than one means means
+  volumes will be scanned in parallel.</description>
+</property>
+
+<property>
   <name>dfs.heartbeat.interval</name>
   <value>3</value>
   <description>Determines datanode heartbeat interval in seconds.</description>

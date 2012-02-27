@@ -61,5 +61,5 @@ export HADOOP_JOBTRACKER_OPTS="-Dcom.sun.management.jmxremote $HADOOP_JOBTRACKER
 
 ##########################################################################
 # The end of if "HADOOP_ENV_SET"
-if
+fi
 ##########################################################################

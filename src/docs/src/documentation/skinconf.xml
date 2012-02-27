@@ -30,7 +30,7 @@ which will be used to configure the chosen Forrest skin.
     In other words google will search the @domain for the query string.
 
   -->
-  <search name="Lucene" domain="hadoop.apache.org" provider="google"/>
+  <search name="Lucene" domain="archive.cloudera.com" provider="google"/>
 
   <!-- Disable the print link? If enabled, invalid HTML 4.0.1 -->
   <disable-print-link>true</disable-print-link>  

@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hdfs.server.datanode;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,6 +32,7 @@ import javax.management.StandardMBean;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdfs.protocol.Block;
+import org.apache.hadoop.hdfs.protocol.BlockLocalPathInfo;
 import org.apache.hadoop.hdfs.protocol.FSConstants;
 import org.apache.hadoop.hdfs.server.datanode.metrics.FSDatasetMBean;
 import org.apache.hadoop.hdfs.server.protocol.BlockRecoveryInfo;
@@ -310,6 +312,21 @@ public class SimulatedFSDataset  implements FSConstants, FSDatasetInterface, Con
     }
     return blockTable;
   }
+  
+  @Override
+  public void requestAsyncBlockReport() {
+  }
+
+  @Override
+  public boolean isAsyncBlockReportReady() {
+    return true;
+  }
+
+  @Override
+  public Block[] retrieveAsyncBlockReport() {
+    return getBlockReport();
+  }
+
 
   public long getCapacity() throws IOException {
     return storage.getCapacity();
@@ -703,5 +720,10 @@ public class SimulatedFSDataset  implements FSConstants, FSDatasetInterface, Con
   @Override
   public Block[] getBlocksBeingWrittenReport() {
     return new Block[0];
+  }
+
+  @Override
+  public BlockLocalPathInfo getBlockLocalPathInfo(Block blk) throws IOException {
+    throw new IOException("getBlockLocalPathInfo not supported.");
   }
 }

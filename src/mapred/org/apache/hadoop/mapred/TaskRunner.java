@@ -165,10 +165,6 @@ abstract class TaskRunner extends Thread {
     return jobConf.get(JobConf.MAPRED_TASK_ENV);
   }
   
-
-  
- 
-  
   @Override
   public final void run() {
     String errorInfo = "Child Error";
@@ -185,6 +181,7 @@ abstract class TaskRunner extends Thread {
           TaskTracker.getTaskWorkDir(t.getUser(), taskid.getJobID().toString(), 
           taskid.toString(),
           t.isTaskCleanupTask())).toString());
+      
       
       // Set up the child task's configuration. After this call, no localization
       // of files should happen in the TaskTracker's process space. Any changes to
@@ -317,15 +314,7 @@ abstract class TaskRunner extends Thread {
         TaskLog.LogName.STDOUT);
     logFiles[1] = TaskLog.getTaskLogFile(taskid, isCleanup,
         TaskLog.LogName.STDERR);
-    File logDir = logFiles[0].getParentFile();
-    boolean b = logDir.mkdirs();
-    if (!b) {
-      LOG.warn("mkdirs failed. Ignoring");
-    } else {
-      FileSystem localFs = FileSystem.getLocal(conf);
-      localFs.setPermission(new Path(logDir.getCanonicalPath()),
-                            new FsPermission((short)0700));
-    }
+    getTracker().getTaskController().createLogDir(taskid, isCleanup);
 
     return logFiles;
   }
@@ -720,7 +709,7 @@ abstract class TaskRunner extends Thread {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Fully deleting contents of " + workDir);
     }
-    
+
     /** delete only the contents of workDir leaving the directory empty. We
      * can't delete the workDir as it is the current working directory.
      */
@@ -742,9 +731,7 @@ abstract class TaskRunner extends Thread {
         for (int i = 0; i < files.length; i++) {
           String link = files[i].getFragment();
           String target = localFiles[i].toString();
-          
           symlink(workDir, target, link);
-          
         }
       }
     }

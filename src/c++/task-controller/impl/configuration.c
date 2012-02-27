@@ -21,7 +21,7 @@
 
 #include "configuration.h"
 #include "task-controller.h"
-#include <assert.h>
+
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -64,36 +64,52 @@ void free_configurations() {
 }
 
 /**
- * Ensure that the configuration file and all of the containing directories
- * are only writable by root. Otherwise, an attacker can change the 
- * configuration and potentially cause damage.
- * returns 1 if permissions are ok
+ * Is the file/directory only writable by root.
+ * Returns 1 if true
  */
-int check_configuration_permissions(FILE *conf_file) {
-  int fd = fileno(conf_file);
-  assert(fd != -1);
-
+static int is_only_root_writable(const char *file) {
   struct stat file_stat;
-  if (fstat(fd, &file_stat) != 0) {
-    fprintf(LOGFILE, "Can't stat opened conf file - %s\n", strerror(errno));
+  if (stat(file, &file_stat) != 0) {
+    fprintf(LOGFILE, "Can't stat file %s - %s\n", file, strerror(errno));
     return 0;
   }
   if (file_stat.st_uid != 0) {
-    fprintf(LOGFILE, "File must be owned by root, but is owned by %d\n",
-            file_stat.st_uid);
+    fprintf(LOGFILE, "File %s must be owned by root, but is owned by %d\n",
+            file, file_stat.st_uid);
     return 0;
   }
   if ((file_stat.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
     fprintf(LOGFILE, 
-	    "File must not be world or group writable, but is %03o\n",
-	    file_stat.st_mode & (~S_IFMT));
+	    "File %s must not be world or group writable, but is %03o\n",
+	    file, file_stat.st_mode & (~S_IFMT));
     return 0;
   }
   return 1;
 }
 
+/**
+ * Ensure that the configuration file and all of the containing directories
+ * are only writable by root. Otherwise, an attacker can change the 
+ * configuration and potentially cause damage.
+ * returns 0 if permissions are ok
+ */
+int check_configuration_permissions(const char* file_name) {
+  // copy the input so that we can modify it with dirname
+  char* dir = strdup(file_name);
+  char* buffer = dir;
+  do {
+    if (!is_only_root_writable(dir)) {
+      free(buffer);
+      return -1;
+    }
+    dir = dirname(dir);
+  } while (strcmp(dir, "/") != 0);
+  free(buffer);
+  return 0;
+}
+
 //function used to load the configurations present in the secure config
-void read_config(const char* file_name, int do_permissions_check) {
+void read_config(const char* file_name) {
   fprintf(LOGFILE, "Reading task controller config from %s\n" , file_name);
   FILE *conf_file;
   char *line;
@@ -120,13 +136,6 @@ void read_config(const char* file_name, int do_permissions_check) {
     fprintf(LOGFILE, "Invalid conf file provided : %s \n", file_name);
     exit(INVALID_CONFIG_FILE);
   }
-  // verify that the conf file is owned by root and has safe permissions
-  if (do_permissions_check && !check_configuration_permissions(conf_file)) {
-    fprintf(LOGFILE, "Invalid permissions or ownership on conf file %s\n", file_name);
-    fprintf(LOGFILE, "Must be owned by root and not writable by group or other\n");
-    exit(INVALID_CONFIG_FILE);
-  }
-
   while(!feof(conf_file)) {
     line = (char *) malloc(linesize);
     if(line == NULL) {
@@ -236,8 +245,9 @@ void read_config(const char* file_name, int do_permissions_check) {
 /*
  * function used to get a configuration value.
  * The function for the first time populates the configuration details into
- * array, next time onwards used the populated array.
+ * array, next time onwards uses the populated array.
  *
+ * Memory returned here should be freed using free.
  */
 char * get_value(const char* key) {
   int count;
@@ -254,8 +264,15 @@ char * get_value(const char* key) {
  * Value delimiter is assumed to be a comma.
  */
 char ** get_values(const char * key) {
-  char ** toPass = NULL;
   char *value = get_value(key);
+  return extract_values(value);
+}
+
+/**
+ * Extracts array of values from the comma separated list of values.
+ */
+char ** extract_values(char * value) {
+  char ** toPass = NULL;
   char *tempTok = NULL;
   char *tempstr = NULL;
   int size = 0;
@@ -281,9 +298,13 @@ char ** get_values(const char * key) {
   return toPass;
 }
 
-// free an entry set of values
+/**
+ * Free an entry set of values.
+ */
 void free_values(char** values) {
   if (*values != NULL) {
+    // the values were tokenized from the same malloc, so freeing the first
+    // frees the entire block.
     free(*values);
   }
   if (values != NULL) {

@@ -21,13 +21,17 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.channels.ClosedChannelException;
 
 import org.apache.commons.logging.Log;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.protocol.Block;
 import org.apache.hadoop.hdfs.protocol.DataTransferProtocol;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
@@ -59,6 +63,8 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
   DataNode datanode;
   DataXceiverServer dataXceiverServer;
   
+  private int socketKeepaliveTimeout;
+  
   public DataXceiver(Socket s, DataNode datanode, 
       DataXceiverServer dataXceiverServer) {
     super(datanode.threadGroup, "DataXceiver (initializing)");
@@ -69,6 +75,11 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
     dataXceiverServer.childSockets.put(s, s);
     remoteAddress = s.getRemoteSocketAddress().toString();
     localAddress = s.getLocalSocketAddress().toString();
+    
+    socketKeepaliveTimeout = datanode.getConf().getInt(
+        DFSConfigKeys.DFS_DATANODE_SOCKET_REUSE_KEEPALIVE_KEY,
+        DFSConfigKeys.DFS_DATANODE_SOCKET_REUSE_KEEPALIVE_DEFAULT);
+    
     LOG.debug("Number of active connections is: " + datanode.getXceiverCount());
     updateThreadName("waiting for handshake");
   }
@@ -89,18 +100,56 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
    * Read/write data from/to the DataXceiverServer.
    */
   public void run() {
-    DataInputStream in=null; 
+    DataInputStream in=null;
+    int opsProcessed = 0;
     try {
       in = new DataInputStream(
           new BufferedInputStream(NetUtils.getInputStream(s), 
                                   SMALL_BUFFER_SIZE));
-      short version = in.readShort();
-      if ( version != DataTransferProtocol.DATA_TRANSFER_VERSION ) {
-        throw new IOException( "Version Mismatch" );
-      }
       boolean local = s.getInetAddress().equals(s.getLocalAddress());
-      updateThreadName("waiting for operation");
-      byte op = in.readByte();
+      int stdTimeout = s.getSoTimeout();
+
+      // We process requests in a loop, and stay around for a short timeout.
+      // This optimistic behaviour allows the other end to reuse connections.
+      // Setting keepalive timeout to 0 disable this behavior.
+      do {
+        updateThreadName("Waiting for operation #" + (opsProcessed + 1));
+
+        byte op;
+        try {
+          if (opsProcessed != 0) {
+            assert socketKeepaliveTimeout > 0;
+            s.setSoTimeout(socketKeepaliveTimeout);
+          }
+          short version = in.readShort();
+          if ( version != DataTransferProtocol.DATA_TRANSFER_VERSION ) {
+            throw new IOException( "Version Mismatch" );
+          }
+
+          op = in.readByte();
+        } catch (InterruptedIOException ignored) {
+          // Time out while waiting for client RPC
+          break;
+        } catch (IOException err) {
+          // Since we optimistically expect the next op, it's quite normal to get EOF here.
+          if (opsProcessed > 0 &&
+              (err instanceof EOFException || err instanceof ClosedChannelException ||
+               err.getMessage().contains("Connection reset by peer"))) {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Cached " + s.toString() + " closing after " + opsProcessed + " ops");
+            }
+          } else {
+            throw err;
+          }
+          break;
+        }
+        
+        // restore normal timeout
+        if (opsProcessed != 0) {
+          s.setSoTimeout(stdTimeout);
+        }
+        // Indentation is left alone here so that patches merge easier from 0.20.20x
+        
       // Make sure the xciver count is not exceeded
       int curXceiverCount = datanode.getXceiverCount();
       if (curXceiverCount > dataXceiverServer.maxXceiverCount) {
@@ -142,6 +191,9 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
       default:
         throw new IOException("Unknown opcode " + op + " in data stream");
       }
+      
+        ++opsProcessed;
+      } while (!s.isClosed() && socketKeepaliveTimeout > 0);
     } catch (Throwable t) {
       LOG.error(datanode.dnRegistration + ":DataXceiver",t);
     } finally {
@@ -206,22 +258,33 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
         blockSender = new BlockSender(block, startOffset, length,
             true, true, false, datanode, clientTraceFmt);
       } catch(IOException e) {
-        out.writeShort(DataTransferProtocol.OP_STATUS_ERROR);
+        sendResponse(s, (short)DataTransferProtocol.OP_STATUS_ERROR,
+            datanode.socketWriteTimeout);
         throw e;
       }
 
       out.writeShort(DataTransferProtocol.OP_STATUS_SUCCESS); // send op status
       long read = blockSender.sendBlock(out, baseStream, null); // send data
 
-      if (blockSender.isBlockReadFully()) {
-        // See if client verification succeeded. 
-        // This is an optional response from client.
+      if (blockSender.didSendEntireByteRange()) {
+        // If client verification succeeded, and if it's for the whole block,
+        // tell the DataBlockScanner that it's good. This is an optional response
+        // from client. If absent, we close the connection (which is what we
+        // always do anyways).
         try {
-          if (in.readShort() == DataTransferProtocol.OP_STATUS_CHECKSUM_OK  && 
-              datanode.blockScanner != null) {
-            datanode.blockScanner.verifiedByClient(block);
+          short status = in.readShort();
+          if (status == DataTransferProtocol.OP_STATUS_CHECKSUM_OK) {
+            if (blockSender.isBlockReadFully() && datanode.blockScanner != null) {
+              datanode.blockScanner.verifiedByClient(block);
+            }
           }
-        } catch (IOException ignored) {}
+        } catch (IOException ioe) {
+          LOG.debug("Error reading client status response. Will close connection.", ioe);
+          IOUtils.closeStream(out);
+        }
+      } else {
+        LOG.info("didnt send entire byte range, closing");
+        IOUtils.closeStream(out);
       }
       
       datanode.myMetrics.bytesRead.inc((int) read);
@@ -229,6 +292,7 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
     } catch ( SocketException ignored ) {
       // Its ok for remote side to close the connection anytime.
       datanode.myMetrics.blocksRead.inc();
+      IOUtils.closeStream(out);
     } catch ( IOException ioe ) {
       /* What exactly should we do here?
        * Earlier version shutdown() datanode if there is disk error.
@@ -239,7 +303,6 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
                 StringUtils.stringifyException(ioe) );
       throw ioe;
     } finally {
-      IOUtils.closeStream(out);
       IOUtils.closeStream(blockSender);
     }
   }
@@ -714,11 +777,7 @@ class DataXceiver extends Thread implements Runnable, FSConstants {
                                                        throws IOException {
     DataOutputStream reply = 
       new DataOutputStream(NetUtils.getOutputStream(s, timeout));
-    try {
-      reply.writeShort(opStatus);
-      reply.flush();
-    } finally {
-      IOUtils.closeStream(reply);
-    }
+    reply.writeShort(opStatus);
+    reply.flush();
   }
 }

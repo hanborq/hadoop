@@ -1442,7 +1442,7 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
       // III. Create the dummy tasktracker status
       TaskTrackerStatus ttStatus = 
         new TaskTrackerStatus(trackerName, trackerHostName, port, ttStatusList, 
-                              0 , 0, 0);
+                              0 , 0, 0, 0);
       ttStatus.setLastSeen(clock.getTime());
 
       synchronized (JobTracker.this) {
@@ -4289,9 +4289,9 @@ public class JobTracker implements MRConstants, InterTrackerProtocol,
     }
   }
   
-  static final String MAPRED_CLUSTER_MAP_MEMORY_MB_PROPERTY =
+  public static final String MAPRED_CLUSTER_MAP_MEMORY_MB_PROPERTY =
       "mapred.cluster.map.memory.mb";
-  static final String MAPRED_CLUSTER_REDUCE_MEMORY_MB_PROPERTY =
+  public static final String MAPRED_CLUSTER_REDUCE_MEMORY_MB_PROPERTY =
       "mapred.cluster.reduce.memory.mb";
 
   static final String MAPRED_CLUSTER_MAX_MAP_MEMORY_MB_PROPERTY =

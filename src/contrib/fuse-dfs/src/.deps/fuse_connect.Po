@@ -1,5 +1,5 @@
 fuse_connect.o fuse_connect.o: fuse_connect.c \
-  /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h \
+  /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h \
   /usr/include/sys/types.h /usr/include/features.h \
   /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
   /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
@@ -36,7 +36,7 @@ fuse_connect.o fuse_connect.o: fuse_connect.c \
   /usr/include/pthread.h /usr/include/sched.h /usr/include/bits/sched.h \
   /usr/include/signal.h /usr/include/bits/setjmp.h /usr/include/search.h
 
-/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h:
+/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h:
 
 /usr/include/sys/types.h:
 

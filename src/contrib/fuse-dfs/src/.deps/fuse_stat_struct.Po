@@ -36,13 +36,13 @@ fuse_stat_struct.o fuse_stat_struct.o: fuse_stat_struct.c \
   /usr/include/fuse/fuse_opt.h fuse_stat_struct.h /usr/include/unistd.h \
   /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
   /usr/include/bits/confname.h /usr/include/getopt.h \
-  /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h \
+  /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h \
   /usr/include/bits/waitflags.h /usr/include/bits/waitstatus.h \
   /usr/include/alloca.h \
   /opt/cloudera/toolchain/JDK6u20-64bit/include/jni.h \
   /opt/cloudera/toolchain/JDK6u20-64bit/include/linux/jni_md.h \
   fuse_context_handle.h \
-  /var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h
+  /var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h
 
 /usr/include/math.h:
 
@@ -208,7 +208,7 @@ fuse_stat_struct.h:
 
 /usr/include/getopt.h:
 
-/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h:
+/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h:
 
 /usr/include/bits/waitflags.h:
 
@@ -222,4 +222,4 @@ fuse_stat_struct.h:
 
 fuse_context_handle.h:
 
-/var/lib/jenkins/workspace/CDH3u2-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u2/src/c++/libhdfs/hdfs.h:
+/var/lib/jenkins/workspace/CDH3u3-RC-CentOS-Hadoop-Tarball/hadoop20/hadoop-0.20.2-cdh3u3/src/c++/libhdfs/hdfs.h:

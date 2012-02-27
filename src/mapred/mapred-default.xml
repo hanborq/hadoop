@@ -205,14 +205,14 @@
 </property>
 
 <property>
-  <name>mapred.tasktracker.memory_calculator_plugin</name>
+  <name>mapred.tasktracker.resourcecalculatorplugin</name>
   <value></value>
   <description>
-   Name of the class whose instance will be used to query memory information
+   Name of the class whose instance will be used to query resource information
    on the tasktracker.
    
    The class must be an instance of 
-   org.apache.hadoop.util.MemoryCalculatorPlugin. If the value is null, the
+   org.apache.hadoop.util.ResourceCalculatorPlugin. If the value is null, the
    tasktracker attempts to use a class appropriate to the platform. 
    Currently, the only platform supported is Linux.
   </description>
@@ -1176,6 +1176,16 @@
   <description>Expert: Group to which TaskTracker belongs. If
    LinuxTaskController is configured via mapreduce.tasktracker.taskcontroller,
    the group owner of the task-controller binary should be same as this group.
+  </description>
+</property>
+
+ <property>
+  <name>mapred.disk.healthChecker.interval</name>
+  <value>60000</value>
+  <description>How often the TaskTracker checks the health of its
+  local directories. Configuring this to a value smaller than the
+  heartbeat interval is equivalent to setting this to heartbeat
+  interval value.
   </description>
 </property>
 
