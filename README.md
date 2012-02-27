@@ -1,5 +1,7 @@
 A Hanborq optimized Hadoop Distribution, especially with high performance of MapReduce. It's the core part of HDH (Hanborq Distribution with Hadoop for Big Data Engineering).   
 
+Here is our presentation: [Hanborq Optimizations on Hadoop MapReduce](http://www.slideshare.net/hanborq/hanborq-optimizations-on-hadoop-mapreduce-20120216a)  
+
 # HDH (Hanborq Distribution with Hadoop)   
 Hanborq, a start-up team focuses on Cloud & BigData products and businesses, delivers a series of software products for Big Data Engineering, including a optimized Hadoop Distribution.   
 
@@ -38,7 +40,8 @@ Please refer to the page [MapReduce Benchmarks](https://github.com/hanborq/hadoo
 ## How to build?  
     $ cd cloudera/maven-packaging  
     $ mvn -Dnot.cdh.release.build=true -Dmaven.test.skip=true -DskipTests=true clean package  
-  
+Then use this package: build/hadoop-{main-version}-hdh{hdh-version}, for example: build/hadoop-0.20.2-hdh3u2  
+
 ## Compatibility   
 The API, configuration, scripts are all back-compatible with [Apache Hadoop](http://hadoop.apache.org/) and [Cloudera Hadoop(CDH)](http://www.cloudera.com/hadoop/). The user and developer need not to study new, except new features.
 
