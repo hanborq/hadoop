@@ -21,9 +21,9 @@ TODO: need license header
 		<maven.repo.local>${user.home}/.m2/repository</maven.repo.local>
 
 		<cdh.parent.version>3.0-u2</cdh.parent.version>
-		<cdh.hadoop.version>0.20.2-hdh3u2</cdh.hadoop.version>
-		<cdh.zookeeper.version>3.3.3-cdh3u2</cdh.zookeeper.version>
-		<cdh.hadoop-snappy.version>0.0.1-cdh3u2</cdh.hadoop-snappy.version>
+		<cdh.hadoop.version>0.20.2-hdh3u3</cdh.hadoop.version>
+		<cdh.zookeeper.version>3.3.3-cdh3u3</cdh.zookeeper.version>
+		<cdh.hadoop-snappy.version>0.0.1-cdh3u3</cdh.hadoop-snappy.version>
 		<cdh.avro.version>1.5.4</cdh.avro.version>
 
 	</properties>
