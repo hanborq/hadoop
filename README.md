@@ -19,8 +19,8 @@ The Testbed: 5 node cluster (4 slaves), 8 map slots and 2 reduce slots per node.
 **1. MapReduce Runtime Environment Improvement**  
 In order to reduce job latency, HDH implements **Distributed Worker Pool** like Google Tenzing. HDH MapReduce framework does not spawn new JVM processes for each job/task, but instead keep the slot processes running constantly. 
 Additionally, there are many other improvements at this aspect.  
-    bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 32 -r 4 -mt 1 -rt 1   
-    bin/hadoop jar hadoop-examples-0.20.2-hdh3u2.jar sleep -m 96 -r 4 -mt 1 -rt 1   
+    bin/hadoop jar hadoop-examples-0.20.2-hdh3u3.jar sleep -m 32 -r 4 -mt 1 -rt 1   
+    bin/hadoop jar hadoop-examples-0.20.2-hdh3u3.jar sleep -m 96 -r 4 -mt 1 -rt 1   
 ![HDH MapReduce Runtime Job/Task Latency](https://github.com/hanborq/hadoop/wiki/images/hdh-mapreduce-runtime-latency-1.jpg)  
 
 **2. MapReduce Processing Engine Improvement**  
