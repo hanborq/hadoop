@@ -334,18 +334,13 @@ public class MergeManager<K, V>
     Iterator<MapOutput<K, V>> iter = null;
     // in memory segment first.
     if (inMemoryMapOutputs.size() > 0) {
-      iter = inMemoryMapOutputs.iterator();
-      MapOutput<K, V> mo = iter.next();
-      iter.remove();
+      MapOutput<K, V> mo = ((TreeSet<MapOutput<K, V>>)inMemoryMapOutputs).pollFirst();
       Reader<K, V> reader = new InMemoryReader<K, V>(MergeManager.this, mo
           .getMapId(), mo.getMemory(), 0, (int) ((long) mo.getMemory().length));
       result = new Segment<K, V>(reader, true, null);
       LOG.info("Feed in memory data -> size :"+mo.getSize()+" to reduce");
     } else {
-      iter = onDiskMapOutputs.iterator();
-      MapOutput<K, V> onDisk = iter.next();
-      iter.remove();
-
+      MapOutput<K, V> onDisk = ((TreeSet<MapOutput<K, V>>)onDiskMapOutputs).pollFirst();
       Path tmp = onDisk.getOutputPath();
       result = new Segment<K, V>(jobConf, rfs, tmp, 0, rfs.getFileStatus(tmp)
           .getLen(), onDisk.getSize(), codec, false, null);
